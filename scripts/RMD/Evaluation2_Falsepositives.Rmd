@@ -1,0 +1,1422 @@
+---
+title: "Categorical methods"
+author: "Marike Meijer"
+date: "25 5 2018"
+output: html_document
+---
+####Setup
+```{r setup, echo=FALSE}
+#opts_chunk$set(echo = FALSE, cache=FALSE)
+source('~/R/scripts/evaluationstatistic/statisticmethodsverification.R')
+```
+
+#####Libaries
+```{r Libaries, message=FALSE, warning=FALSE}
+library(dplyr)
+library(data.table)
+library(readr)
+library(Metrics)
+library(sp)
+library(RColorBrewer)
+library(raster)
+library(ggmap)
+```
+
+####Variables
+```{r Variables, message=FALSE, warning=FALSE,echo=FALSE}
+#path
+#path
+cospath="~/R/data/cosmo/"
+wrfpath="~/R/data/wrf/falsepositives"
+gfspath="~/R/data/gfs/"
+icopath="~/R/data/icon/"
+#colorscheme
+red<-brewer.pal(11,"RdYlGn")
+#shapefile of germany
+shape=shapefile("~/R/data/other/germ")
+proj4string(shape)
+WGS84 = CRS("+init=epsg:4326")
+bbox=matrix(c(4,16,45,58),nrow=2,ncol=2, byrow = TRUE)
+#backgroundmap
+gmap=get_map(location = bbox, maptype = "terrain",color="bw")
+bbMap=attr(gmap, 'bb')
+latCenter=with(bbMap, ll.lat + ur.lat)/2
+lonCenter=with(bbMap, ll.lon + ur.lon)/2
+height=with(bbMap, ur.lat - ll.lat)
+width=with(bbMap, ur.lon - ll.lon)
+sp.raster=list('grid.raster', gmap,x=lonCenter, y=latCenter,width=width, height=height,default.units='native',first=T)
+
+```
+
+##Categorical measurements 
+###Qualtiy of Prediction 
+
+
+```{r}
+setwd(wrfpath)
+fp_all_noruns_wrf=read.csv("fp_all_noruns_new_wrf.csv")
+setwd(cospath)
+fp_all_noruns_cos=read.csv("fp_all_noruns_new_cos.csv")
+setwd(icopath)
+fp_all_noruns_ico=read.csv("fp_all_noruns_new_ico.csv")
+setwd(gfspath)
+fp_all_noruns_gfs=read.csv("fp_all_noruns_new_gfs.csv")
+
+
+fp_all_noruns_wrf_jan=fp_all_noruns_wrf[3885,]
+######################################################
+#Far Falsealarmratio
+#Range 0-1 
+#Best Value 0
+#WRF
+far(fp_all_noruns_wrf)
+#COSMO
+far(fp_all_noruns_cos)
+#ICON
+far(fp_all_noruns_ico)
+#GFS
+far(fp_all_noruns_gfs)
+##########################################################
+#PEC Percent of correct forecasts
+#Range 0-1 
+#Best Value 1
+#WRF
+pec(fp_all_noruns_wrf)
+#COSMO
+pec(fp_all_noruns_cos)
+#ICON
+pec(fp_all_noruns_ico)
+#GFS
+pec(fp_all_noruns_gfs)
+
+#POD Probalility of detection
+#Range 0-1 
+#Best Value 1
+#WRF
+pod(fp_all_noruns_wrf)
+#COSMO
+pod(fp_all_noruns_cos)
+#ICON
+pod(fp_all_noruns_ico)
+#GFS
+pod(fp_all_noruns_gfs)
+#####################################################
+#THS Threatscore 
+#Range 0-1 
+#Best Value 1
+#WRF
+ths(fp_all_noruns_wrf)
+#COSMO
+ths(fp_all_noruns_cos)
+#ICON
+ths(fp_all_noruns_ico)
+#GFS
+ths(fp_all_noruns_gfs)
+```
+
+```{r}
+setwd(wrfpath)
+fp_all_noruns_wrf=read.csv("fp_all_noruns_new_wrf.csv")
+fp_all_noruns_wrf$X=NULL
+setwd(cospath)
+fp_all_noruns_cos=read.csv("fp_all_noruns_new_cos.csv")
+setwd(icopath)
+fp_all_noruns_ico=read.csv("fp_all_noruns_new_ico.csv")
+setwd(gfspath)
+fp_all_noruns_gfs=read.csv("fp_all_noruns_new_gfs.csv")
+
+hitmisssum=function(fpfile){
+  date=unique(fpfile$Predate)
+  all=NULL
+for(i in date){
+   x=subset(fpfile, fpfile$Predate==i)
+   new=data.frame(Predate=x$Predate,A=sum(x$A),B=sum(x$B),C=sum(x$C),D=sum(x$D))
+   all=rbindlist(list(all,new))
+}
+  return(unique(all))
+}
+
+# fp_sum_wrf=hitmisssum(fp_all_noruns_wrf)
+# ggplot(fp_sum_wrf, aes(x=Predate, y=Counts) )
+# 
+# fpwrf=data.frame(A=sum(fp_sum_wrf$A),B=sum(fp_sum_wrf$B),C=sum(fp_sum_wrf$C),D=sum(fp_sum_wrf$D))
+# 
+# ggplot(NULL, aes(x=Predate,y=Counts, group = 1)) + 
+# geom_bar(data=fp_sum_wrf,aes(y=A, col="A")) + geom_point(data=fp_sum_wrf,aes(y=A, col="A"))+ geom_line(data=fp_sum_wrf,aes(y=B, col="B")) +   geom_line(data=fp_sum_wrf,aes(y=C, col="C")) +  geom_line(data=fp_sum_wrf,aes(y=D, col="D")) 
+# 
+# 
+# ggplot(data=fpwrf, aes(c(x=A,x=B))) +
+#     geom_bar(stat="count")
+
+```
+
+
+```{r}
+#P=Prediction, O= Observation
+#A= P=y | O=y  --> Hit
+#B= P=y | O=n  --> FalsePositive
+#C= P=n | O=y  --> Miss
+#D= P=n | O=n  --> Hit but no Event
+
+
+
+setwd(wrfpath)
+fp_all_noruns_wrf=read.csv("fp_all_noruns_new_wrf.csv")
+setwd(cospath)
+fp_all_noruns_cos=read.csv("fp_all_noruns_new_cos.csv")
+setwd(icopath)
+fp_all_noruns_ico=read.csv("fp_all_noruns_new_ico.csv")
+setwd(gfspath)
+fp_all_noruns_gfs=read.csv("fp_all_noruns_new_gfs.csv")
+coordinates(fp_all_noruns_wrf)=c("V5","V6")
+proj4string(fp_all_noruns_wrf) <- CRS(proj4string(shape))
+dates=fp_all_noruns_wrf$Predate
+dates=dates[!duplicated(dates)]
+sp.point=list("sp.points",fp_all_noruns_wrf,cex=0.5,color="black" )
+sp.list=list(sp.point,sp.raster)
+
+wrf_plots_fp=lapply(1:103, function(x)spplot((subset(fp_all_noruns_wrf,fp_all_noruns_wrf$Predate==dates[x])),c("A","B","C","D"),main="  A : Hit      |      B : FP          |    C: MISS         |    D:  HIT_ne", sub=paste("WRF-Model Date:",dates[x]),edge.col="black",sp.layout=sp.raster))
+###########################
+coordinates(fp_all_noruns_cos)=c("V5","V6")
+proj4string(fp_all_noruns_cos) <- CRS(proj4string(shape))
+dates_cos=fp_all_noruns_cos$Predate
+dates_cos=dates_cos[!duplicated(dates_cos)]
+sp.point=list("sp.points",fp_all_noruns_cos,cex=0.5,color="black" )
+sp.list=list(sp.point,sp.raster)
+
+cos_plots_fp=lapply(1:103, function(x)spplot((subset(fp_all_noruns_cos,fp_all_noruns_cos$Predate==dates_cos[x])),c("A","B","C","D"),main="  A : Hit      |      B : FP          |    C: MISS         |    D:  HIT_ne", sub=paste("COSMO-Model Date:",dates[x]),edge.col="black",sp.layout=sp.raster))
+############################
+coordinates(fp_all_noruns_ico)=c("V5","V6")
+proj4string(fp_all_noruns_ico) <- CRS(proj4string(shape))
+dates_ico=fp_all_noruns_ico$Predate
+dates_ico=dates_ico[!duplicated(dates_ico)]
+sp.point=list("sp.points",fp_all_noruns_ico,cex=0.5,color="black" )
+sp.list=list(sp.point,sp.raster)
+
+ico_plots_fp=lapply(1:103, function(x)spplot((subset(fp_all_noruns_ico,fp_all_noruns_ico$Predate==dates_ico[x])),c("A","B","C","D"),main="  A : Hit      |      B : FP          |    C: MISS         |    D:  HIT_ne", sub=paste("ICON-Model Date:",dates_ico[x]),edge.col="black",sp.layout=sp.raster))
+############################
+coordinates(fp_all_noruns_gfs)=c("V5","V6")
+proj4string(fp_all_noruns_gfs) <- CRS(proj4string(shape))
+date_gfs=fp_all_noruns_gfs$Predate
+date_gfs=date_gfs[!duplicated(date_gfs)]
+sp.point=list("sp.points",fp_all_noruns_gfs,cex=0.5,color="black" )
+sp.list=list(sp.point,sp.raster)
+
+gfs_plots_fp=lapply(1:103, function(x)spplot((subset(fp_all_noruns_gfs,fp_all_noruns_gfs$Predate==date_gfs[x])),c("A","B","C","D"),main="  A : Hit      |      B : FP          |    C: MISS         |    D:  HIT_ne", sub=paste("GFS-Model Date:",date_gfs[x]),edge.col="black",sp.layout=sp.raster))
+
+#require(gridExtra)
+#January
+
+
+for (i in 1:13){
+print(wrf_plots_fp[i])
+print(cos_plots_fp[i])
+print(gfs_plots_fp[i])
+print(ico_plots_fp[i])
+
+}
+# #February
+# for(i in 14:41){
+# print(wrf_plots_fp[i])
+# print(cos_plots_fp[i])
+# print(gfs_plots_fp[i])
+# print(ico_plots_fp[i])
+# 
+# }
+# #March
+# for(i in 42:72){
+#   print(wrf_plots_fp[i])
+# print(cos_plots_fp[i])
+# print(gfs_plots_fp[i])
+# print(ico_plots_fp[i])
+# 
+#   
+# }
+# #April 
+# for(i in 73:103){
+#   print(wrf_plots_fp[i])
+# #print(cos_plots_fp[i])
+# #print(gfs_plots_fp[i])
+# #print(ico_plots_fp[i])
+# 
+#   
+# }
+
+```
+
+
+
+```{r}
+setwd(wrfpath)
+fp_wrf_monthly_jan=read.csv("fp_wrf_monthly_jan.csv")
+fp_wrf_monthly_feb=read.csv("fp_wrf_monthly_feb.csv")
+fp_wrf_monthly_mar=read.csv("fp_wrf_monthly_mar.csv")
+fp_wrf_monthly_apr=read.csv("fp_wrf_monthly_apr.csv")
+setwd(cospath)
+fp_cos_monthly_jan=read.csv("fp_cos_monthly_jan.csv")
+fp_cos_monthly_feb=read.csv("fp_cos_monthly_feb.csv")
+fp_cos_monthly_mar=read.csv("fp_cos_monthly_mar.csv")
+fp_cos_monthly_apr=read.csv("fp_cos_monthly_apr.csv")
+setwd(icopath)
+fp_ico_monthly_jan=read.csv("fp_ico_monthly_jan.csv")
+fp_ico_monthly_feb=read.csv("fp_ico_monthly_feb.csv")
+fp_ico_monthly_mar=read.csv("fp_ico_monthly_mar.csv")
+fp_ico_monthly_apr=read.csv("fp_ico_monthly_apr.csv")
+setwd(gfspath)
+fp_gfs_monthly_jan=read.csv("fp_gfs_monthly_jan.csv")
+fp_gfs_monthly_feb=read.csv("fp_gfs_monthly_feb.csv")
+fp_gfs_monthly_mar=read.csv("fp_gfs_monthly_mar.csv")
+fp_gfs_monthly_apr=read.csv("fp_gfs_monthly_apr.csv")
+
+
+
+######################################################
+#Far Falsealarmratio
+#Range 0-1 
+#Best Value 0
+#WRF
+far(fp_wrf_monthly_jan)
+far(fp_wrf_monthly_feb)
+far(fp_wrf_monthly_mar)
+far(fp_wrf_monthly_apr)
+#COSMO
+far(fp_cos_monthly_jan)
+far(fp_cos_monthly_feb)
+far(fp_cos_monthly_mar)
+far(fp_cos_monthly_apr)
+#ICON
+far(fp_ico_monthly_jan)
+far(fp_ico_monthly_feb)
+far(fp_ico_monthly_mar)
+far(fp_ico_monthly_apr)
+#GFS
+far(fp_gfs_monthly_jan)
+far(fp_gfs_monthly_feb)
+far(fp_gfs_monthly_mar)
+far(fp_gfs_monthly_apr)
+##########################################################
+#PEC Percent of correct forecasts
+#Range 0-1 
+#Best Value 1
+#WRF
+pec(fp_wrf_monthly_jan)
+pec(fp_wrf_monthly_feb)
+pec(fp_wrf_monthly_mar)
+pec(fp_wrf_monthly_apr)
+#COSMO
+pec(fp_cos_monthly_jan)
+pec(fp_cos_monthly_feb)
+pec(fp_cos_monthly_mar)
+pec(fp_cos_monthly_apr)
+#ICON
+pec(fp_ico_monthly_jan)
+pec(fp_ico_monthly_feb)
+pec(fp_ico_monthly_mar)
+pec(fp_ico_monthly_apr)
+#GFS
+pec(fp_gfs_monthly_jan)
+pec(fp_gfs_monthly_feb)
+pec(fp_gfs_monthly_mar)
+pec(fp_gfs_monthly_apr)
+#POD Probalility of detection
+#Range 0-1 
+#Best Value 1
+#WRF
+pod(fp_wrf_monthly_jan)
+pod(fp_wrf_monthly_feb)
+pod(fp_wrf_monthly_mar)
+pod(fp_wrf_monthly_apr)
+#COSMO
+pod(fp_cos_monthly_jan)
+pod(fp_cos_monthly_feb)
+pod(fp_cos_monthly_mar)
+pod(fp_cos_monthly_apr)
+#ICON
+pod(fp_ico_monthly_jan)
+pod(fp_ico_monthly_feb)
+pod(fp_ico_monthly_mar)
+pod(fp_ico_monthly_apr)
+#GFS
+pod(fp_gfs_monthly_jan)
+pod(fp_gfs_monthly_feb)
+pod(fp_gfs_monthly_mar)
+pod(fp_gfs_monthly_apr)
+#####################################################
+#THS Threatscore 
+#Range 0-1 
+#Best Value 1
+ths(fp_wrf_monthly_jan)
+ths(fp_wrf_monthly_feb)
+ths(fp_wrf_monthly_mar)
+ths(fp_wrf_monthly_apr)
+#COSMO
+ths(fp_cos_monthly_jan)
+ths(fp_cos_monthly_feb)
+ths(fp_cos_monthly_mar)
+ths(fp_cos_monthly_apr)
+#ICON
+ths(fp_ico_monthly_jan)
+ths(fp_ico_monthly_feb)
+ths(fp_ico_monthly_mar)
+ths(fp_ico_monthly_apr)
+#GFS
+ths(fp_gfs_monthly_jan)
+ths(fp_gfs_monthly_feb)
+ths(fp_gfs_monthly_mar)
+ths(fp_gfs_monthly_apr)
+
+```
+
+```{r}
+
+setwd(wrfpath)
+fp_wrf_monthly_jan=read.csv("fp_wrf_monthly_jan.csv")
+fp_wrf_monthly_feb=read.csv("fp_wrf_monthly_feb.csv")
+fp_wrf_monthly_mar=read.csv("fp_wrf_monthly_mar.csv")
+fp_wrf_monthly_apr=read.csv("fp_wrf_monthly_apr.csv")
+setwd(cospath)
+fp_cos_monthly_jan=read.csv("fp_cos_monthly_jan.csv")
+fp_cos_monthly_feb=read.csv("fp_cos_monthly_feb.csv")
+fp_cos_monthly_mar=read.csv("fp_cos_monthly_mar.csv")
+fp_cos_monthly_apr=read.csv("fp_cos_monthly_apr.csv")
+setwd(icopath)
+fp_ico_monthly_jan=read.csv("fp_ico_monthly_jan.csv")
+fp_ico_monthly_feb=read.csv("fp_ico_monthly_feb.csv")
+fp_ico_monthly_mar=read.csv("fp_ico_monthly_mar.csv")
+fp_ico_monthly_apr=read.csv("fp_ico_monthly_apr.csv")
+setwd(gfspath)
+fp_gfs_monthly_jan=read.csv("fp_gfs_monthly_jan.csv")
+fp_gfs_monthly_feb=read.csv("fp_gfs_monthly_feb.csv")
+fp_gfs_monthly_mar=read.csv("fp_gfs_monthly_mar.csv")
+fp_gfs_monthly_apr=read.csv("fp_gfs_monthly_apr.csv")
+
+setwd(wrfpath)
+fp_all_noruns_wrf=read.csv("fp_all_noruns_new_wrf.csv")
+setwd(cospath)
+fp_all_noruns_cos=read.csv("fp_all_noruns_new_cos.csv")
+setwd(icopath)
+fp_all_noruns_ico=read.csv("fp_all_noruns_new_ico.csv")
+setwd(gfspath)
+fp_all_noruns_gfs=read.csv("fp_all_noruns_new_gfs.csv")
+
+
+i="2018-02-06"
+date=unique(fp_all_noruns_wrf$Predate)
+stationid=unique(fp_all_noruns_wrf$STATIONS_ID)
+wrf_per_day_pec=NULL
+for (i in date){
+  
+    wrf_per_day=subset(fp_all_noruns_wrf,fp_all_noruns_wrf$Predate==i)
+new=data.frame(Predate=wrf_per_day$Predate[1], FAR=far(wrf_per_day), PEC=pec(wrf_per_day),POD=pod(wrf_per_day),THS=ths(wrf_per_day))
+    
+wrf_per_day_pec=rbindlist(list(wrf_per_day_pec,new),use.names = F,fill=F)
+  
+}
+
+
+date=unique(fp_all_noruns_cos$Predate)
+stationid=unique(fp_all_noruns_cos$STATIONS_ID)
+cos_per_day_pec=NULL
+for (i in date){
+  
+    cos_per_day=subset(fp_all_noruns_cos,fp_all_noruns_cos$Predate==i)
+new=data.frame(Predate=cos_per_day$Predate[1], FAR=far(cos_per_day), PEC=pec(cos_per_day),POD=pod(cos_per_day),THS=ths(cos_per_day))
+    
+cos_per_day_pec=rbindlist(list(cos_per_day_pec,new),use.names = F,fill=F)
+  
+}
+
+
+
+date=unique(fp_all_noruns_ico$Predate)
+stationid=unique(fp_all_noruns_ico$STATIONS_ID)
+ico_per_day_pec=NULL
+for (i in date){
+  
+    ico_per_day=subset(fp_all_noruns_ico,fp_all_noruns_ico$Predate==i)
+new=data.frame(Predate=ico_per_day$Predate[1], FAR=far(ico_per_day), PEC=pec(ico_per_day),POD=pod(ico_per_day),THS=ths(ico_per_day))
+    
+ico_per_day_pec=rbindlist(list(ico_per_day_pec,new),use.names = F,fill=F)
+  
+}
+
+date=unique(fp_all_noruns_gfs$Predate)
+stationid=unique(fp_all_noruns_gfs$STATIONS_ID)
+gfs_per_day_pec=NULL
+for (i in date){
+  
+    gfs_per_day=subset(fp_all_noruns_gfs,fp_all_noruns_gfs$Predate==i)
+new=data.frame(Predate=gfs_per_day$Predate[1], FAR=far(gfs_per_day), PEC=pec(gfs_per_day),POD=pod(gfs_per_day),THS=ths(gfs_per_day))
+    
+gfs_per_day_pec=rbindlist(list(gfs_per_day_pec,new),use.names = F,fill=F)
+  
+}
+
+shape=NULL
+
+```
+
+
+
+```{r}
+ggplot(data = NULL, aes(x=as.Date(Predate)))+ geom_point(data=gfs_per_day_pec,aes(y=PEC,col="GFS"))+
+   geom_point(data=wrf_per_day_pec,aes(y=PEC,col="WRF")) +  geom_point(data=ico_per_day_pec,aes(y=PEC,col="ICON")) + #geom_point(data=cos_per_day_pec,aes(y=PEC,col="COSMO")) +
+  scale_color_manual( name="Model",
+        values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange"))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "2 week", date_labels = "%d.%m")+ xlab("Date") +scale_y_continuous(breaks = seq(0, 1, by = .10))
+
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run4,aes(y=RMSE, col="WRF")) + 
+  geom_line(data=cos_run4,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run4,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Root Mean Square Error", 
+       subtitle="RUN 18 UTC", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange")) +scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "2 week", date_labels = "%d.%m")+  # line color
+  theme(panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle = 75, hjust = 1))  # turn off minor grid
+```
+
+
+
+```{r}
+setwd("~/R/wrf/stormwrf/fp")
+wrffiles=list.files("~/Desktop/R/MA/wrf/pattern/stormwrf/fp")
+setwd("~/Desktop/R/MA/wrf/pattern/stormwrf/fp")
+wrf_fp_storm=rbindlist(lapply(wrffiles, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+```
+
+```{r}
+
+fp_wrf_monthly_jan=read.csv("fp_wrf_monthly_jan.csv")
+fp_wrf_monthly_feb=read.csv("fp_wrf_monthly_feb.csv")
+fp_wrf_monthly_mar=read.csv("fp_wrf_monthly_mar.csv")
+fp_wrf_monthly_apr=read.csv("fp_wrf_monthly_apr.csv")
+setwd(cospath)
+fp_cos_monthly_jan=read.csv("fp_cos_monthly_jan.csv")
+fp_cos_monthly_feb=read.csv("fp_cos_monthly_feb.csv")
+fp_cos_monthly_mar=read.csv("fp_cos_monthly_mar.csv")
+fp_cos_monthly_apr=read.csv("fp_cos_monthly_apr.csv")
+setwd(icopath)
+fp_ico_monthly_jan=read.csv("fp_ico_monthly_jan.csv")
+fp_ico_monthly_feb=read.csv("fp_ico_monthly_feb.csv")
+fp_ico_monthly_mar=read.csv("fp_ico_monthly_mar.csv")
+fp_ico_monthly_apr=read.csv("fp_ico_monthly_apr.csv")
+setwd(gfspath)
+fp_gfs_monthly_jan=read.csv("fp_gfs_monthly_jan.csv")
+fp_gfs_monthly_feb=read.csv("fp_gfs_monthly_feb.csv")
+fp_gfs_monthly_mar=read.csv("fp_gfs_monthly_mar.csv")
+fp_gfs_monthly_apr=read.csv("fp_gfs_monthly_apr.csv")
+
+green=brewer.pal(6,"Spectral")
+
+stationid=unique(fp_gfs_monthly_jan$STATIONS_ID)
+sp_gfs_jan_fp=NULL
+for (i in stationid){
+  x=subset(fp_gfs_monthly_jan,fp_gfs_monthly_jan$STATIONS_ID==i)
+  
+  new=data.frame(STATIONS_ID=x$STATIONS_ID,V5=x$V5,V6=x$V6,FAR=far(x),PEC=pec(x),POD=pod(x),THS=ths(x))
+  sp_gfs_jan_fp=rbindlist(list(sp_gfs_jan_fp,new))
+sp_gfs_jan_fp=unique(sp_gfs_jan_fp)
+
+}
+coordinates(sp_gfs_jan_fp)=c("V5","V6")
+proj4string(sp_gfs_jan_fp) <- CRS(proj4string(shape))
+
+
+gfs_jan_fp=spplot(sp_gfs_jan_fp, c("FAR","PEC","POD","THS"),main="GFS", sub="January 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+
+file="~/Desktop/R/MA/pic/fp/fp_jan_gfs.png"
+ png(file=file, width = 720, height = 576, units = "px")
+print(gfs_jan_fp)
+dev.off()
+
+```
+```{r}
+setwd(wrfpath)
+fp_all_noruns_wrf=read.csv("fp_all_noruns_new_wrf.csv")
+setwd(cospath)
+fp_all_noruns_cos=read.csv("fp_all_noruns_new_cos.csv")
+setwd(icopath)
+fp_all_noruns_ico=read.csv("fp_all_noruns_new_ico.csv")
+setwd(gfspath)
+fp_all_noruns_gfs=read.csv("fp_all_noruns_new_gfs.csv")
+
+
+green=brewer.pal(6,"Spectral")
+
+stationid=unique(fp_all_noruns_gfs$STATIONS_ID)
+sp_gfs_fp=NULL
+for (i in stationid){
+  x=subset(fp_all_noruns_gfs,fp_all_noruns_gfs$STATIONS_ID==i)
+  
+  new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1],FAR=far(x),PEC=pec(x),POD=pod(x),THS=ths(x))
+  sp_gfs_fp=rbindlist(list(sp_gfs_fp,new))
+sp_gfs_fp=unique(sp_gfs_fp)
+
+}
+coordinates(sp_gfs_fp)=c("V5","V6")
+proj4string(sp_gfs_fp) <- CRS(proj4string(shape))
+
+
+gfs_fp=spplot(sp_gfs_fp, c("FAR","PEC","POD","THS"),main="GFS", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+
+file="~/Desktop/R/MA/pic/fp/sp_fp_gfs.png"
+ #png(file=file, width = 720, height = 576, units = "px")
+print(gfs_fp)
+dev.off()
+
+
+stationid=unique(fp_all_noruns_wrf$STATIONS_ID)
+sp_wrf_fp=NULL
+for (i in stationid){
+  x=subset(fp_all_noruns_wrf,fp_all_noruns_wrf$STATIONS_ID==i)
+  
+  new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1],FAR=far(x),PEC=pec(x),POD=pod(x),THS=ths(x))
+  sp_wrf_fp=rbindlist(list(sp_wrf_fp,new))
+sp_wrf_fp=unique(sp_wrf_fp)
+
+}
+coordinates(sp_wrf_fp)=c("V5","V6")
+proj4string(sp_wrf_fp) <- CRS(proj4string(shape))
+
+
+wrf_fp=spplot(sp_wrf_fp, c("FAR","PEC","POD","THS"),main="WRF", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+
+file="~/Desktop/R/MA/pic/fp/sp_fp_wrf.png"
+# png(file=file, width = 720, height = 576, units = "px")
+print(wrf_fp)
+dev.off()
+
+
+stationid=unique(fp_all_noruns_cos$STATIONS_ID)
+sp_cos_fp=NULL
+for (i in stationid){
+  x=subset(fp_all_noruns_cos,fp_all_noruns_cos$STATIONS_ID==i)
+  
+  new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1],FAR=far(x),PEC=pec(x),POD=pod(x),THS=ths(x))
+  sp_cos_fp=rbindlist(list(sp_cos_fp,new))
+sp_cos_fp=unique(sp_cos_fp)
+
+}
+coordinates(sp_cos_fp)=c("V5","V6")
+proj4string(sp_cos_fp) <- CRS(proj4string(shape))
+
+
+cos_fp=spplot(sp_cos_fp, c("FAR","PEC","POD","THS"),main="COSMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+
+file="~/Desktop/R/MA/pic/fp/sp_fp_cos.png"
+# png(file=file, width = 720, height = 576, units = "px")
+print(cos_fp)
+dev.off()
+
+
+sp_cos_fp_good=subset(sp_cos_fp,sp_cos_fp$PEC>0.95)
+
+cos_fp_good=spplot(sp_cos_fp_good, c("PEC"),main="COSMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+cos_fp_good
+
+
+sp_wrf_fp_good=subset(sp_wrf_fp,sp_wrf_fp$PEC>0.95)
+
+wrf_fp_good=spplot(sp_wrf_fp_good, c("PEC"),main="wrfMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+wrf_fp_good
+
+
+sp_ico_fp_good=subset(sp_ico_fp,sp_ico_fp$PEC>0.95)
+
+ico_fp_good=spplot(sp_ico_fp_good, c("PEC"),main="icoMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+ico_fp_good
+
+
+sp_gfs_fp_good=subset(sp_gfs_fp,sp_gfs_fp$PEC>0.95)
+
+gfs_fp_good=spplot(sp_gfs_fp_good, c("PEC"),main="gfsMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+gfs_fp_good
+
+
+
+sp_cos_fp_good=subset(sp_cos_fp,sp_cos_fp$POD>0.95)
+
+cos_fp_good=spplot(sp_cos_fp_good, c("POD"),main="COSMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+cos_fp_good
+
+
+sp_wrf_fp_good=subset(sp_wrf_fp,sp_wrf_fp$POD>0.95)
+
+wrf_fp_good=spplot(sp_wrf_fp_good, c("POD"),main="wrfMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+wrf_fp_good
+
+
+sp_ico_fp_good=subset(sp_ico_fp,sp_ico_fp$POD>0.95)
+
+ico_fp_good=spplot(sp_ico_fp_good, c("POD"),main="icoMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+ico_fp_good
+
+
+sp_gfs_fp_good=subset(sp_gfs_fp,sp_gfs_fp$POD>0.95)
+
+gfs_fp_good=spplot(sp_gfs_fp_good, c("POD"),main="gfsMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+gfs_fp_good
+
+
+sp_cos_fp_good=subset(sp_cos_fp,sp_cos_fp$FAR<.15)
+
+cos_fp_good=spplot(sp_cos_fp_good, c("FAR"),main="COSMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+cos_fp_good
+
+
+sp_wrf_fp_good=subset(sp_wrf_fp,sp_wrf_fp$FAR<0.15)
+
+wrf_fp_good=spplot(sp_wrf_fp_good, c("FAR"),main="wrfMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+wrf_fp_good
+
+
+sp_ico_fp_good=subset(sp_ico_fp,sp_ico_fp$FAR<0.15)
+
+ico_fp_good=spplot(sp_ico_fp_good, c("FAR"),main="icoMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1))
+ico_fp_good
+
+
+sp_gfs_fp_good=subset(sp_gfs_fp,sp_gfs_fp$FAR<0.15)
+
+gfs_fp_good=spplot(sp_gfs_fp_good, c("FAR"),main="gfsMO", sub="January - April 2018",edge.col="black",sp.layout=sp.raster,colorkey=T, col.regions=green,cuts=c(0,0.2))
+gfs_fp_good
+
+```
+```{r}
+fp=read.csv("~/Desktop/R/MA/cosmo/pattern/fp_all_noruns_new_cos.csv")
+
+stationid=fp$STATIONS_ID
+stationid=unique(stationid)
+newfp=NULL
+x=NULL
+for (i in stationid){
+  
+  x=subset(fp,fp$STATIONS_ID==i)
+  x=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], A=sum(x$A),B=sum(x$B),C=sum(x$C),D=sum(x$D),Stationshoehe=x$Stationshoehe[1])
+  newfp=rbindlist(list(newfp,x))
+}
+
+
+spplot(newfp,c("A","B","C","D"), col.regions=sta, cuts=c(0,10,20,30,40,50,60,70,80,90,100),edge.col="black",sp.layout=sp.raster)
+coordinates(newfp)=c("V5","V6")
+proj4string(newfp) <- CRS(proj4string(shape))
+
+
+
+```
+
+```{r}
+#stormevents 
+
+cos_all_no_runs_1801 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-01-18.csv")
+
+X=unique(cos_all_no_runs_1801$timestamp)
+X=na.omit(X)
+
+getValueofPrediction=function(model_file,modelname){
+  valueprediction=NULL
+  dates=model_file$timestamp
+  dates=unique(dates)
+  dates=na.omit(dates)
+  stationid=model_file$STATIONS_ID
+  stationid=unique(stationid)
+  for (i in dates){
+   # print(i)
+    for (j in stationid) {
+      x=subset(model_file,model_file$timestamp==i & model_file$STATIONS_ID==j)
+      if(nrow(x)==0){next}
+      if(x$V7>17.1 && x$FX_MAX >17.1){
+        new=list(timestamp=x$timestamp[1], STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1],V6=x$V6[1],V7=x$V7[1],FX_MAX=x$FX_MAX[1], Stationshoehe=x$Stationshoehe, A=1,B=0,C=0,D=0)}
+      else if(x$V7>17.1 && x$FX_MAX <17.2){
+        new=list(timestamp=x$timestamp[1], STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1],V6=x$V6[1],V7=x$V7[1],FX_MAX=x$FX_MAX[1], Stationshoehe=x$Stationshoehe[1], A=0,B=1,C=0,D=0)}
+      else if(x$V7<17.2 && x$FX_MAX >17.1){
+        new=list(timestamp=x$timestamp[1], STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1],V6=x$V6[1],V7=x$V7[1],FX_MAX=x$FX_MAX[1], Stationshoehe=x$Stationshoehe[1], A=0,B=0,C=1,D=0)}
+      else if(x$V7<17.2 && x$FX_MAX <17.2){
+        new=list(timestamp=x$timestamp[1], STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1],V6=x$V6[1],V7=x$V7[1],FX_MAX=x$FX_MAX[1], Stationshoehe=x$Stationshoehe[1], A=0,B=0,C=0,D=1)}
+      else return("error")
+      
+      valueprediction=rbindlist(list(new,valueprediction),use.names = F,fill=F)
+    }
+  }
+  print("here")
+#  if (modelname=="wrf"){write.csv(valueprediction, paste(wrfpath,"/fp_all_noruns_new.csv",sep=""))}
+ # else if (modelname=="gfs"){write.csv(valueprediction, paste(gfspath,"/fp_all_noruns_new.csv",sep=""))}
+  #else if (modelname=="icon"){write.csv(valueprediction, paste(icopath,"/fp_all_noruns_new.csv",sep=""))}
+  #else if (modelname =="cospath"){write.csv(valueprediction, paste(cospath,"/fp_all_noruns_new.csv",sep=""))}
+  #else 
+   # print("wrong")
+  
+  return(valueprediction)
+}
+
+x=getValueofPrediction(cos_all_no_runs_1801,"wrf")
+x$date
+far(x)
+pec(x)
+pod(x)
+ths(x)
+
+```
+
+###Categorical Measures for Storm Events
+```{r}
+setwd("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/")
+cos_all_no_runs_20180118 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-01-18.csv")
+cos_all_no_runs_20180120 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-01-20.csv")
+cos_all_no_runs_20180129 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-01-29.csv")
+cos_all_no_runs_20180131 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-01-31.csv")
+cos_all_no_runs_20180317 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-03-17.csv")
+cos_all_no_runs_20180318 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-03-18.csv")
+cos_all_no_runs_20180328 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-03-28.csv")
+cos_all_no_runs_20180404 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-04-04.csv")
+cos_all_no_runs_20180405 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-04-05.csv")
+cos_all_no_runs_20180412 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-04-12.csv")
+cos_all_no_runs_20180425 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-04-25.csv")
+cos_all_no_runs_20180429 <- read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/noruns/cos_all_no_runs_2018-04-29.csv")
+
+
+x=getValueofPrediction(cos_all_no_runs_20180118,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180120,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180129,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180131,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180317,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180318,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180328,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180404,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180405,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180412,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180425,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(cos_all_no_runs_20180429,"cosmo")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+
+
+```
+```{r}
+setwd("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/")
+wrf_all_no_runs_20180118 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-01-18.csv")
+wrf_all_no_runs_20180120 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-01-20.csv")
+wrf_all_no_runs_20180129 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-01-29.csv")
+wrf_all_no_runs_20180131 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-01-31.csv")
+wrf_all_no_runs_20180317 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-03-17.csv")
+wrf_all_no_runs_20180318 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-03-18.csv")
+wrf_all_no_runs_20180328 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-03-28.csv")
+wrf_all_no_runs_20180404 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-04-04.csv")
+#wrf_all_no_runs_20180405 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-04-05.csv")
+wrf_all_no_runs_20180412 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-04-12.csv")
+wrf_all_no_runs_20180425 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-04-25.csv")
+#wrf_all_no_runs_20180429 <- read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/noruns/wrf_all_no_runs_2018-04-29.csv")
+
+
+x=getValueofPrediction(wrf_all_no_runs_20180118,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180120,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180129,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180131,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180317,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180318,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180328,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180404,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+#x=getValueofPrediction(wrf_all_no_runs_20180405,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180412,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(wrf_all_no_runs_20180425,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+#x=getValueofPrediction(wrf_all_no_runs_20180429,"wrf")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+
+```
+
+```{r}
+setwd("~/Desktop/R/MA/icon/pattern/stormico/noruns/")
+ico_all_no_runs_20180118 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-01-18.csv")
+ico_all_no_runs_20180120 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-01-20.csv")
+ico_all_no_runs_20180129 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-01-29.csv")
+ico_all_no_runs_20180131 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-01-31.csv")
+ico_all_no_runs_20180317 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-03-17.csv")
+ico_all_no_runs_20180318 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-03-18.csv")
+ico_all_no_runs_20180328 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-03-28.csv")
+ico_all_no_runs_20180404 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-04-04.csv")
+ico_all_no_runs_20180405 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-04-05.csv")
+ico_all_no_runs_20180412 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-04-12.csv")
+ico_all_no_runs_20180425 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-04-25.csv")
+ico_all_no_runs_20180429 <- read.csv("~/Desktop/R/MA/icon/pattern/stormico/noruns/ico_all_no_runs_2018-04-29.csv")
+
+
+x=getValueofPrediction(ico_all_no_runs_20180118,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180120,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180129,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180131,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180317,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180318,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180328,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180404,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180405,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180412,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180425,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(ico_all_no_runs_20180429,"icon")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+
+
+```
+
+
+
+```{r}
+setwd("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/")
+gfs_all_no_runs_20180118 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-01-18.csv")
+gfs_all_no_runs_20180120 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-01-20.csv")
+gfs_all_no_runs_20180129 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-01-29.csv")
+gfs_all_no_runs_20180131 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-01-31.csv")
+gfs_all_no_runs_20180317 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-03-17.csv")
+gfs_all_no_runs_20180318 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-03-18.csv")
+gfs_all_no_runs_20180328 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-03-28.csv")
+gfs_all_no_runs_20180404 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-04-04.csv")
+gfs_all_no_runs_20180405 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-04-05.csv")
+gfs_all_no_runs_20180412 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-04-12.csv")
+gfs_all_no_runs_20180425 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-04-25.csv")
+gfs_all_no_runs_20180429 <- read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/noruns/gfs_all_no_runs_2018-04-29.csv")
+
+
+x=getValueofPrediction(gfs_all_no_runs_20180118,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180120,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180129,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180131,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180317,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180318,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180328,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180404,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180405,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180412,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180425,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+x=getValueofPrediction(gfs_all_no_runs_20180429,"gfs")
+print(x$timestamp[1])
+print("far")
+far(x)
+print("pec")
+pec(x)
+print("pod")
+pod(x)
+print("ths")
+ths(x)
+```
+
+
+
+
+```{r}
+#stormevents spplot
+green=brewer.pal(6,"Spectral")
+cosmo180118=read.csv("~/Desktop/R/MA/cosmo/pattern/stormcos/fp/fp_storm_2018-01-18_18.csv")
+stationid=unique(cosmo180118$STATIONS_ID)
+timestamp=unique(cosmo180118$timestamp)
+cosmo180118new=NULL
+
+  for (i in stationid){
+    x=subset(cosmo180118,cosmo180118$STATIONS_ID==i)
+    x$FAR=far(x)
+    x$PEC=pec(x)
+    x$POD=pod(x)
+    x$THS=ths(x)
+    cosmo180118new=rbindlist(list(cosmo180118new,x))
+  }  
+coordinates(cosmo180118new)=c("V5","V6")
+proj4string(cosmo180118new) <- CRS(proj4string(shape))
+
+
+
+spplot(cosmo180118new,c("FAR","PEC","POD","THS"),sp.layout=sp.raster, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1),edge.col="black",colorkey=T,sub="RUN 18 UTC for 18.01.2018", main="COSMO",cex=0.7)
+
+
+###########
+#WRF
+##########
+
+wrf180118=read.csv("~/Desktop/R/MA/wrf/pattern/stormwrf/fp/fp_storm_2018-01-18_18.csv")
+stationid=unique(wrf180118$STATIONS_ID)
+timestamp=unique(wrf180118$timestamp)
+wrf180118new=NULL
+
+  for (i in stationid){
+    x=subset(wrf180118,wrf180118$STATIONS_ID==i)
+    x$FAR=far(x)
+    x$PEC=pec(x)
+    x$POD=pod(x)
+    x$THS=ths(x)
+    wrf180118new=rbindlist(list(wrf180118new,x))
+  }  
+coordinates(wrf180118new)=c("V5","V6")
+proj4string(wrf180118new) <- CRS(proj4string(shape))
+
+
+
+spplot(wrf180118new,c("FAR","PEC","POD","THS"),sp.layout=sp.raster, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1),edge.col="black",colorkey=T,sub="RUN 18 UTC for 18.01.2018", main="WRF",cex=0.7)
+
+#####
+#ICON
+#####
+
+
+icon180118=read.csv("~/Desktop/R/MA/icon/pattern/stormico/fp/fp_storm_2018-01-18_18.csv")
+stationid=unique(icon180118$STATIONS_ID)
+timestamp=unique(icon180118$timestamp)
+icon180118new=NULL
+
+  for (i in stationid){
+    x=subset(icon180118,icon180118$STATIONS_ID==i)
+    x$FAR=far(x)
+    x$PEC=pec(x)
+    x$POD=pod(x)
+    x$THS=ths(x)
+    icon180118new=rbindlist(list(icon180118new,x))
+  }  
+coordinates(icon180118new)=c("V5","V6")
+proj4string(icon180118new) <- CRS(proj4string(shape))
+
+
+
+spplot(icon180118new,c("FAR","PEC","POD","THS"),sp.layout=sp.raster, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1),edge.col="black",colorkey=T,sub="RUN 18 UTC for 18.01.2018", main="ICON",cex=0.7)
+
+#####
+#GFS
+####
+gfs180118=read.csv("~/Desktop/R/MA/gfs/pattern/stormgfs/fp/fp_storm_2018-01-18_18.csv")
+stationid=unique(gfs180118$STATIONS_ID)
+timestamp=unique(gfs180118$timestamp)
+gfs180118new=NULL
+
+  for (i in stationid){
+    x=subset(gfs180118,gfs180118$STATIONS_ID==i)
+    x$FAR=far(x)
+    x$PEC=pec(x)
+    x$POD=pod(x)
+    x$THS=ths(x)
+    gfs180118new=rbindlist(list(gfs180118new,x))
+  }  
+coordinates(gfs180118new)=c("V5","V6")
+proj4string(gfs180118new) <- CRS(proj4string(shape))
+
+
+
+spplot(gfs180118new,c("FAR","PEC","POD","THS"),sp.layout=sp.raster, col.regions=green,cuts=c(0,0.2,0.4,0.6,0.8,1),edge.col="black",colorkey=T,sub="RUN 18 UTC for 18.01.2018", main="GFS",cex=0.7)
+
+
+```
+

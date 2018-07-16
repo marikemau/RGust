@@ -1,0 +1,797 @@
+---
+title: "Evaluation3_Hours"
+author: "Marike Meijer"
+date: "25 5 2018"
+output: html_document
+---
+
+```{r Libaries, message=FALSE, warning=FALSE}
+library(dplyr)
+library(readr)
+library(Metrics)
+library(sp)
+library(RColorBrewer)
+library(raster)
+library(ggmap)
+library(ggplot2)
+
+```
+
+
+```{r Variables, message=FALSE, warning=FALSE}
+#path
+cospath="~/R/data/cosmo/stormcos"
+wrfpath="~/R/data/wrf/stormwrf"
+gfspath="~/R/data/gfs/stormgfs"
+icopath="~/R/data/icon/stormico"
+#colorscheme
+red<-brewer.pal(11,"RdYlGn")
+#shapefile of germany
+shape=shapefile("~/R/data/other/germ")
+proj4string(shape)
+WGS84 = CRS("+init=epsg:4326")
+bbox=matrix(c(4,16,45,58),nrow=2,ncol=2, byrow = TRUE)
+#backgroundmap
+gmap=get_map(location = bbox, maptype = "terrain",color="bw")
+bbMap=attr(gmap, 'bb')
+latCenter=with(bbMap, ll.lat + ur.lat)/2
+lonCenter=with(bbMap, ll.lon + ur.lon)/2
+height=with(bbMap, ur.lat - ll.lat)
+width=with(bbMap, ur.lon - ll.lon)
+sp.raster=list('grid.raster', gmap,x=lonCenter, y=latCenter,width=width, height=height,default.units='native',first=T)
+
+```
+
+
+
+```{r}
+
+storm_wrf_1801=read.csv("~/R/data/wrf/stormwrf/stormwrf_0118.csv")
+coordinates(storm_wrf_1801)=c("V5","V6")
+proj4string(storm_wrf_1801) <- CRS(proj4string(shape))
+#coordinates(storm_wrf_2801)=c("V5","V6")
+#proj4string(storm_wrf_2801) <- CRS(proj4string(shape))
+#coordinates(storm_wrf_0404)=c("V5","V6")
+#proj4string(storm_wrf_0404) <- CRS(proj4string(shape))
+
+
+```
+
+
+```{r}
+time=storm_wrf_1801$time
+storm_wrf_1801_00=subset(storm_wrf_1801,storm_wrf_1801$RUN==00)
+storm_wrf_1801_06=subset(storm_wrf_1801,storm_wrf_1801$RUN==06)
+storm_wrf_1801_12=subset(storm_wrf_1801,storm_wrf_1801$RUN==12)
+storm_wrf_1801_18=subset(storm_wrf_1801,storm_wrf_1801$RUN==18)
+
+wrf_plots00 <- lapply(1:24, function(x) spplot((subset(storm_wrf_1801_00,storm_wrf_1801_00$time==time[x])),c("FX_MAX","V7"),main="WRF GUST RUN 00", sub=paste("Date 18.01.18 Hour",time[x]),colorkey=T, col.regions=rev(red), cuts=c(0,3,6,9,12,15,18,21,40),edge.col="black",sp.layout=sp.raster,cex=0.8))
+wrf_plots_rmse00 <- lapply(1:24, function(x) spplot((subset(storm_wrf_1801_00,storm_wrf_1801_00$time==time[x])),c("rmse"),main="WRF GUST RMSE", sub=paste("Date 18.01.18 Hour",time[x]),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,20),edge.col="black",sp.layout=sp.raster,cex=0.9))
+wrf_plots06 <- lapply(1:24, function(x) spplot((subset(storm_wrf_1801_06,storm_wrf_1801_06$time==time[x])),c("FX_MAX","V7"),main="WRF GUST RUN 06", sub=paste("Date 18.01.18 Hour",time[x]),colorkey=T, col.regions=rev(red), cuts=c(0,3,6,9,12,15,18,21,40),edge.col="black",sp.layout=sp.raster,cex=0.8))
+wrf_plots_rmse06 <- lapply(1:24, function(x) spplot((subset(storm_wrf_1801_06,storm_wrf_1801_06$time==time[x])),c("rmse"),main="WRF GUST RMSE", sub=paste("Date 18.01.18 Hour",time[x]),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,20),edge.col="black",sp.layout=sp.raster,cex=0.9))
+
+#storm_wrf_1801_00=subset(storm_wrf_1801,storm_wrf_1801$RUN==18)
+#wrf_plots <- lapply(1:24, function(x) spplot((subset(storm_wrf_1801_00,storm_wrf_1801_00$time==time[x])),c("FX_MAX","V7"),main="WRF GUST", sub=paste("Date 18.01.18 Hour",time[x]),colorkey=T, col.regions=rev(red), cuts=c(0,5,10,15,20,25,30,35,40),edge.col="black",sp.layout=sp.raster,cex=2))
+#storm_wrf_0404_00=subset(storm_wrf_0404,storm_wrf_0404$RUN==00)
+#wrf_plots <- lapply(1:24, function(x) 
+
+require(gridExtra)
+for(i in 1:24)
+{
+do.call(grid.arrange, c(wrf_plots00[i],wrf_plots_rmse00[i],nrow=2,ncol=1))
+
+}
+#06
+for(i in 1:24)
+{
+do.call(grid.arrange, c(wrf_plots06[i],wrf_plots_rmse06[i],nrow=2,ncol=1))
+
+}
+
+
+
+```
+
+
+
+```{r}
+storm_wrf_1801=read.csv2("~/R/data/wrf/stormwrf/stormaccu_wrf.csv",sep=",",header=T,fill=T)
+storm_wrf_1801$X=NULL
+storm_wrf_1801=unique(storm_wrf_1801)
+storm_wrf_1801$Date=as.Date(storm_wrf_1801$timestamp)
+storm_wrf_1801=na.omit(storm_wrf_1801)
+storm_wrf_1801=subset(storm_wrf_1801,storm_wrf_1801$Date=="2018-01-18")
+storm_wrf_1801_00=subset(storm_wrf_1801,storm_wrf_1801$RUN==00)
+
+storm_wrf_1801_06=subset(storm_wrf_1801,storm_wrf_1801$RUN==06)
+storm_wrf_1801_12=subset(storm_wrf_1801,storm_wrf_1801$RUN==12)
+storm_wrf_1801_18=subset(storm_wrf_1801,storm_wrf_1801$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_wrf_1801_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_wrf_1801_06,aes(y=RMSE, col="RUN 06",group=1)) +   geom_path(data=storm_wrf_1801_12,aes(y=RMSE, col="RUN 12",group=1)) +   geom_path(data=storm_wrf_1801_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="WRF ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  +theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.99, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1)) + theme( legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1))# turn off minor grid
+
+
+storm_wrf_1801_00$STATIONS_ID
+```
+
+
+###Time Series of RMSE 
+
+```{r}
+
+storm_wrf=read.csv("~/R/data/wrf/stormwrf/stormaccu_wrf.csv")
+storm_wrf=storm_wrf[1:1200,]
+storm_wrf$X=NULL
+storm_wrf=unique(storm_wrf)
+storm_wrf$Date=as.Date(storm_wrf$timestamp)
+storm_wrf=na.omit(storm_wrf)
+storm_wrf_1801=subset(storm_wrf,storm_wrf$Date=="2018-01-18")
+storm_wrf_1801_00=subset(storm_wrf_1801,storm_wrf_1801$RUN==00)
+
+storm_wrf_1801_06=subset(storm_wrf_1801,storm_wrf_1801$RUN==06)
+storm_wrf_1801_12=subset(storm_wrf_1801,storm_wrf_1801$RUN==12)
+storm_wrf_1801_18=subset(storm_wrf_1801,storm_wrf_1801$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_wrf_1801_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_wrf_1801_06,aes(y=RMSE, col="RUN 06",group=1)) +   geom_path(data=storm_wrf_1801_12,aes(y=RMSE, col="RUN 12",group=1)) +   geom_path(data=storm_wrf_1801_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="WRF 18.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  +theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1)) # turn off minor grid
+
+
+
+
+storm_wrf_3101=subset(storm_wrf,storm_wrf$Date=="2018-01-31")
+storm_wrf_3101_00=subset(storm_wrf_3101,storm_wrf_3101$RUN==00)
+storm_wrf_3101_06=subset(storm_wrf_3101,storm_wrf_3101$RUN==06)
+storm_wrf_3101_12=subset(storm_wrf_3101,storm_wrf_3101$RUN==12)
+storm_wrf_3101_18=subset(storm_wrf_3101,storm_wrf_3101$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_wrf_3101_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_wrf_3101_06,aes(y=RMSE, col="RUN 06",group=1)) +   geom_path(data=storm_wrf_3101_12,aes(y=RMSE, col="RUN 12",group=1)) +   geom_path(data=storm_wrf_3101_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="WRF 31.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+#############
+
+storm_wrf_0404=subset(storm_wrf,storm_wrf$Date=="2018-04-04")
+storm_wrf_0404_00=subset(storm_wrf_0404,storm_wrf_0404$RUN==00)
+storm_wrf_0404_06=subset(storm_wrf_0404,storm_wrf_0404$RUN==06)
+storm_wrf_0404_12=subset(storm_wrf_0404,storm_wrf_0404$RUN==12)
+storm_wrf_0404_18=subset(storm_wrf_0404,storm_wrf_0404$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_wrf_0404_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_wrf_0404_06,aes(y=RMSE, col="RUN 06",group=1)) +   geom_path(data=storm_wrf_0404_12,aes(y=RMSE, col="RUN 12",group=1)) +   geom_path(data=storm_wrf_0404_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="WRF 04.04.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust =1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1)) 
+  
+
+##############################################
+
+#COSMO
+
+##############################################
+
+storm_cos=read.csv("~/R/data/cosmo/stormcos/stormaccu_cos.csv")
+storm_cos=storm_cos[1:727,]
+storm_cos$X=NULL
+storm_cos=unique(storm_cos)
+storm_cos$Date=as.Date(storm_cos$timestamp)
+storm_cos=na.omit(storm_cos)
+storm_cos_1801=subset(storm_cos,storm_cos$Date=="2018-01-18")
+storm_cos_1801_00=subset(storm_cos_1801,storm_cos_1801$RUN==00)
+
+storm_cos_1801_06=subset(storm_cos_1801,storm_cos_1801$RUN==06)
+storm_cos_1801_12=subset(storm_cos_1801,storm_cos_1801$RUN==12)
+storm_cos_1801_18=subset(storm_cos_1801,storm_cos_1801$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_cos_1801_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_cos_1801_06,aes(y=RMSE, col="RUN 06",group=1)) +   geom_path(data=storm_cos_1801_12,aes(y=RMSE, col="RUN 12",group=1)) +   geom_path(data=storm_cos_1801_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="COSMO 18.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  +theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1)) # turn off minor grid
+
+
+
+
+storm_cos_3101=subset(storm_cos,storm_cos$Date=="2018-01-31")
+storm_cos_3101_00=subset(storm_cos_3101,storm_cos_3101$RUN==00)
+storm_cos_3101_06=subset(storm_cos_3101,storm_cos_3101$RUN==06)
+storm_cos_3101_12=subset(storm_cos_3101,storm_cos_3101$RUN==12)
+storm_cos_3101_18=subset(storm_cos_3101,storm_cos_3101$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_cos_3101_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_cos_3101_06,aes(y=RMSE, col="RUN 06",group=1)) +   geom_path(data=storm_cos_3101_12,aes(y=RMSE, col="RUN 12",group=1)) +   geom_path(data=storm_cos_3101_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="COSMO 31.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+#############
+
+storm_cos_0404=subset(storm_cos,storm_cos$Date=="2018-04-04")
+storm_cos_0404_00=subset(storm_cos_0404,storm_cos_0404$RUN==00)
+storm_cos_0404_06=subset(storm_cos_0404,storm_cos_0404$RUN==06)
+storm_cos_0404_12=subset(storm_cos_0404,storm_cos_0404$RUN==12)
+storm_cos_0404_18=subset(storm_cos_0404,storm_cos_0404$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_cos_0404_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_cos_0404_06,aes(y=RMSE, col="RUN 06",group=1)) +   geom_path(data=storm_cos_0404_12,aes(y=RMSE, col="RUN 12",group=1)) +   geom_path(data=storm_cos_0404_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="COSMO 04.04.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+##############################################
+
+
+##############################################
+
+#ICON
+
+##############################################
+
+storm_ico=read.csv("~/R/data/icon/stormico/stormaccu_ico.csv")
+storm_ico=storm_ico[1:936,]
+storm_ico$X=NULL
+storm_ico=unique(storm_ico)
+storm_ico$Date=as.Date(storm_ico$timestamp)
+storm_ico=na.omit(storm_ico)
+storm_ico_1801=subset(storm_ico,storm_ico$Date=="2018-01-18")
+storm_ico_1801_00=subset(storm_ico_1801,storm_ico_1801$RUN==00)
+
+storm_ico_1801_06=subset(storm_ico_1801,storm_ico_1801$RUN==06)
+#storm_ico_1801_12=subset(storm_ico_1801,storm_ico_1801$RUN==12)
+storm_ico_1801_18=subset(storm_ico_1801,storm_ico_1801$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_ico_1801_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_ico_1801_06,aes(y=RMSE, col="RUN 06",group=1))  +   geom_path(data=storm_ico_1801_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="ICON 18.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  +theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1)) # turn off minor grid
+
+
+
+
+storm_ico_3101=subset(storm_ico,storm_ico$Date=="2018-01-31")
+storm_ico_3101_00=subset(storm_ico_3101,storm_ico_3101$RUN==00)
+storm_ico_3101_06=subset(storm_ico_3101,storm_ico_3101$RUN==06)
+#storm_ico_3101_12=subset(storm_ico_3101,storm_ico_3101$RUN==12)
+storm_ico_3101_18=subset(storm_ico_3101,storm_ico_3101$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_ico_3101_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_ico_3101_06,aes(y=RMSE, col="RUN 06",group=1))  +   geom_path(data=storm_ico_3101_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="ICON 31.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+#############
+
+storm_ico_0404=subset(storm_ico,storm_ico$Date=="2018-04-04")
+storm_ico_0404_00=subset(storm_ico_0404,storm_ico_0404$RUN==00)
+storm_ico_0404_06=subset(storm_ico_0404,storm_ico_0404$RUN==06)
+#storm_ico_0404_12=subset(storm_ico_0404,storm_ico_0404$RUN==12)
+storm_ico_0404_18=subset(storm_ico_0404,storm_ico_0404$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_ico_0404_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_ico_0404_06,aes(y=RMSE, col="RUN 06",group=1))  +   geom_path(data=storm_ico_0404_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="ICON 04.04.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+##############################################
+
+##############################################
+
+#GFS
+
+##############################################
+
+storm_gfs=read.csv("~/R/data/gfs/stormgfs/stormaccu_gfs.csv")
+storm_gfs=storm_gfs[1:417,]
+storm_gfs$X=NULL
+storm_gfs=unique(storm_gfs)
+storm_gfs$Date=as.Date(storm_gfs$timestamp)
+storm_gfs=na.omit(storm_gfs)
+storm_gfs_1801=subset(storm_gfs,storm_gfs$Date=="2018-01-18")
+storm_gfs_1801_00=subset(storm_gfs_1801,storm_gfs_1801$RUN==00)
+storm_gfs_1801_06=subset(storm_gfs_1801,storm_gfs_1801$RUN==06)
+storm_gfs_1801_12=subset(storm_gfs_1801,storm_gfs_1801$RUN==12)
+storm_gfs_1801_18=subset(storm_gfs_1801,storm_gfs_1801$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_gfs_1801_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_gfs_1801_06,aes(y=RMSE, col="RUN 06",group=1))  +  
+  geom_path(data=storm_gfs_1801_12,aes(y=RMSE, col="RUN 12",group=1)) +  geom_path(data=storm_gfs_1801_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="GFS 18.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  +theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1)) # turn off minor grid
+
+
+
+
+storm_gfs_3101=subset(storm_gfs,storm_gfs$Date=="2018-01-31")
+storm_gfs_3101_00=subset(storm_gfs_3101,storm_gfs_3101$RUN==00)
+storm_gfs_3101_06=subset(storm_gfs_3101,storm_gfs_3101$RUN==06)
+storm_gfs_3101_12=subset(storm_gfs_3101,storm_gfs_3101$RUN==12)
+storm_gfs_3101_18=subset(storm_gfs_3101,storm_gfs_3101$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_gfs_3101_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_gfs_3101_06,aes(y=RMSE, col="RUN 06",group=1))  + 
+   geom_path(data=storm_gfs_3101_12,aes(y=RMSE, col="RUN 12",group=1)) + geom_path(data=storm_gfs_3101_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="GFS 31.01.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+#############
+
+storm_gfs_0404=subset(storm_gfs,storm_gfs$Date=="2018-04-04")
+storm_gfs_0404_00=subset(storm_gfs_0404,storm_gfs_0404$RUN==00)
+storm_gfs_0404_06=subset(storm_gfs_0404,storm_gfs_0404$RUN==06)
+storm_gfs_0404_12=subset(storm_gfs_0404,storm_gfs_0404$RUN==12)
+storm_gfs_0404_18=subset(storm_gfs_0404,storm_gfs_0404$RUN==18)
+theme_set(theme_bw())
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_gfs_0404_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  geom_path(data=storm_gfs_0404_06,aes(y=RMSE, col="RUN 06",group=1))  + 
+   geom_path(data=storm_gfs_0404_12,aes(y=RMSE, col="RUN 12",group=1)) + geom_path(data=storm_gfs_0404_18,aes(y=RMSE, col="RUN 18",group=1)) + 
+  labs(title="Hourly RMSE", 
+       subtitle="GFS 04.04.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38", "RUN 06"="#f8766d","RUN 12"="blue", "RUN 18"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+##############################################
+
+
+```
+
+
+```{r} 
+#per run per day 
+ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+  geom_path(data=storm_wrf_3101_00,aes(y=RMSE, col="RUN 00",group=1)) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="WRF ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00"="#00ba38")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+
+ggplot(NULL, aes(x=time,y=RMSE)) + 
+  geom_path(data=storm_wrf_0404_18,aes(y=RMSE, col="WRF",group=1)) + 
+  geom_path(data=storm_cos_0404_18,aes(y=RMSE, col="COSMO",group=1))  + 
+   geom_path(data=storm_ico_0404_18,aes(y=RMSE, col="ICON",group=1)) + geom_path(data=storm_gfs_0404_18,aes(y=RMSE, col="GFS",group=1)) + 
+  labs(title="Hourly RMSE ", 
+       subtitle="RUN 18 UTC for 04.04.2018 ", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())+theme(axis.text.x = element_text(angle = 75, hjust = 1))+xlab("Hours in UTC") + theme( legend.position = c(.25, .99),   legend.justification = c("right", "top"),   legend.box.just = "top",   legend.margin = margin(1, 1, 1, 1))   # turn off minor grid
+
+```
+
+
+
+###Continous measures for storm events
+```{r}
+library(data.table)
+library(Metrics)
+files=list.files(path="~/R/data/cosmo/stormcos/noruns/")
+setwd("~/R/data/cosmo/stormcos/noruns")
+cos_all=rbindlist(lapply(files, function(x){tryCatch(read.csv(x, header= T))}),fill = T)
+cos_all=na.omit(cos_all)
+cos_all$X=NULL
+cos_all=unique(cos_all)
+
+rmse(cos_all$FX_MAX,cos_all$V7)
+cor(cos_all$FX_MAX,cos_all$V7)
+bias(cos_all$FX_MAX,cos_all$V7)
+
+
+files=list.files(path="~/R/data/wrf/stormwrf/noruns/")
+setwd("~/R/data/wrf/stormwrf/noruns")
+wrf_all=rbindlist(lapply(files, function(x){tryCatch(read.csv(x, header= T))}),fill = T)
+wrf_all=na.omit(wrf_all)
+wrf_all$X=NULL
+wrf_all=unique(wrf_all)
+rmse(wrf_all$FX_MAX,wrf_all$V7)
+cor(wrf_all$FX_MAX,wrf_all$V7)
+bias(wrf_all$FX_MAX,wrf_all$V7)
+
+
+files=list.files(path="~/R/data/icon/stormico/noruns/")
+setwd("~/R/data/icon/stormico/noruns")
+ico_all=rbindlist(lapply(files, function(x){tryCatch(read.csv(x, header= T))}),fill = T)
+ico_all=na.omit(ico_all)
+ico_all$X=NULL
+ico_all=unique(ico_all)
+rmse(ico_all$FX_MAX,ico_all$V7)
+cor(ico_all$FX_MAX,ico_all$V7)
+bias(ico_all$FX_MAX,ico_all$V7)
+
+
+
+files=list.files(path="~/R/data/gfs/stormgfs/noruns/")
+setwd("~/R/data/gfs/stormgfs/noruns")
+gfs_all=rbindlist(lapply(files, function(x){tryCatch(read.csv(x, header= T))}),fill = T)
+gfs_all=na.omit(gfs_all)
+gfs_all$X=NULL
+gfs_all=unique(gfs_all)
+rmse(gfs_all$FX_MAX,gfs_all$V7)
+cor(gfs_all$FX_MAX,gfs_all$V7)
+bias(gfs_all$FX_MAX,gfs_all$V7)
+```
+
+
+
+###spplots for hourly RMSE 
+####WRF
+```{r}
+
+setwd("~/R/data/wrf/stormwrf/noruns")
+wrf_all_no_runs_1801=read.csv("~/R/data/wrf/stormwrf/noruns/wrf_all_no_runs_2018-01-18.csv")
+timestamp=wrf_all_no_runs_1801$timestamp
+timestamp=unique(timestamp)
+stationid=wrf_all_no_runs_1801$STATIONS_ID
+stationid=unique(stationid)
+stormwrfday1801=NULL
+  for (i in stationid){
+    
+    x=subset(wrf_all_no_runs_1801,wrf_all_no_runs_1801$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormwrfday1801=rbindlist(list(stormwrfday1801,new))
+  }
+stormwrfday1801=na.omit(stormwrfday1801)
+  
+coordinates(stormwrfday1801)=c("V5","V6")
+proj4string(stormwrfday1801) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormwrfday1801, c("RMSE"),main="WRF Mean of hourly RMSE ", sub=paste("Date 18.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+wrf_all_no_runs_3101=read.csv("~/R/data/wrf/stormwrf/noruns/wrf_all_no_runs_2018-01-31.csv")
+timestamp=wrf_all_no_runs_3101$timestamp
+timestamp=unique(timestamp)
+stationid=wrf_all_no_runs_3101$STATIONS_ID
+stationid=unique(stationid)
+stormwrfday3101=NULL
+  for (i in stationid){
+    
+    x=subset(wrf_all_no_runs_3101,wrf_all_no_runs_3101$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormwrfday3101=rbindlist(list(stormwrfday3101,new))
+  }
+stormwrfday3101=na.omit(stormwrfday3101)
+  
+coordinates(stormwrfday3101)=c("V5","V6")
+proj4string(stormwrfday3101) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormwrfday3101, c("RMSE"),main="WRF Mean of hourly RMSE ", sub=paste("Date 31.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+wrf_all_no_runs_0404=read.csv("~/R/data/wrf/stormwrf/noruns/wrf_all_no_runs_2018-04-04.csv")
+timestamp=wrf_all_no_runs_0404$timestamp
+timestamp=unique(timestamp)
+stationid=wrf_all_no_runs_0404$STATIONS_ID
+stationid=unique(stationid)
+stormwrfday0404=NULL
+  for (i in stationid){
+    
+    x=subset(wrf_all_no_runs_0404,wrf_all_no_runs_0404$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormwrfday0404=rbindlist(list(stormwrfday0404,new))
+  }
+stormwrfday0404=na.omit(stormwrfday0404)
+  
+coordinates(stormwrfday0404)=c("V5","V6")
+proj4string(stormwrfday0404) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormwrfday0404, c("RMSE"),main="WRF Mean of hourly RMSE ", sub=paste("Date 04.04.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+```
+####COSMO
+```{r}
+cos_all_no_runs_1801=read.csv("~/R/data/cosmo/stormcos/noruns/cos_all_no_runs_2018-01-18.csv")
+timestamp=cos_all_no_runs_1801$timestamp
+timestamp=unique(timestamp)
+stationid=cos_all_no_runs_1801$STATIONS_ID
+stationid=unique(stationid)
+stormcosday1801=NULL
+  for (i in stationid){
+    
+    x=subset(cos_all_no_runs_1801,cos_all_no_runs_1801$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormcosday1801=rbindlist(list(stormcosday1801,new))
+  }
+stormcosday1801=na.omit(stormcosday1801)
+  
+coordinates(stormcosday1801)=c("V5","V6")
+proj4string(stormcosday1801) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormcosday1801, c("RMSE"),main="COSMO Mean of hourly RMSE ", sub=paste("Date 18.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+cos_all_no_runs_3101=read.csv("~/R/data/cosmo/stormcos/noruns/cos_all_no_runs_2018-01-31.csv")
+timestamp=cos_all_no_runs_3101$timestamp
+timestamp=unique(timestamp)
+stationid=cos_all_no_runs_3101$STATIONS_ID
+stationid=unique(stationid)
+stormcosday3101=NULL
+  for (i in stationid){
+    
+    x=subset(cos_all_no_runs_3101,cos_all_no_runs_3101$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormcosday3101=rbindlist(list(stormcosday3101,new))
+  }
+stormcosday3101=na.omit(stormcosday3101)
+  
+coordinates(stormcosday3101)=c("V5","V6")
+proj4string(stormcosday3101) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormcosday3101, c("RMSE"),main="COSMO Mean of hourly RMSE ", sub=paste("Date 31.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+cos_all_no_runs_0404=read.csv("~/R/data/cosmo/stormcos/noruns/cos_all_no_runs_2018-04-04.csv")
+timestamp=cos_all_no_runs_0404$timestamp
+timestamp=unique(timestamp)
+stationid=cos_all_no_runs_0404$STATIONS_ID
+stationid=unique(stationid)
+stormcosday0404=NULL
+  for (i in stationid){
+    
+    x=subset(cos_all_no_runs_0404,cos_all_no_runs_0404$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormcosday0404=rbindlist(list(stormcosday0404,new))
+  }
+stormcosday0404=na.omit(stormcosday0404)
+  
+coordinates(stormcosday0404)=c("V5","V6")
+proj4string(stormcosday0404) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormcosday0404, c("RMSE"),main="COSMO Mean of hourly RMSE ", sub=paste("Date 04.04.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+```
+####ICON
+```{r}
+ico_all_no_runs_1801=read.csv("~/R/data/icon/stormico/noruns/ico_all_no_runs_2018-01-18.csv")
+timestamp=ico_all_no_runs_1801$timestamp
+timestamp=unique(timestamp)
+stationid=ico_all_no_runs_1801$STATIONS_ID
+stationid=unique(stationid)
+stormicoday1801=NULL
+  for (i in stationid){
+    
+    x=subset(ico_all_no_runs_1801,ico_all_no_runs_1801$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormicoday1801=rbindlist(list(stormicoday1801,new))
+  }
+stormicoday1801=na.omit(stormicoday1801)
+  
+coordinates(stormicoday1801)=c("V5","V6")
+proj4string(stormicoday1801) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormicoday1801, c("RMSE"),main="ICON Mean of hourly RMSE ", sub=paste("Date 18.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+ico_all_no_runs_3101=read.csv("~/R/data/icon/stormico/noruns/ico_all_no_runs_2018-01-31.csv")
+timestamp=ico_all_no_runs_3101$timestamp
+timestamp=unique(timestamp)
+stationid=ico_all_no_runs_3101$STATIONS_ID
+stationid=unique(stationid)
+stormicoday3101=NULL
+  for (i in stationid){
+    
+    x=subset(ico_all_no_runs_3101,ico_all_no_runs_3101$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormicoday3101=rbindlist(list(stormicoday3101,new))
+  }
+stormicoday3101=na.omit(stormicoday3101)
+  
+coordinates(stormicoday3101)=c("V5","V6")
+proj4string(stormicoday3101) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormicoday3101, c("RMSE"),main="ICON Mean of hourly RMSE ", sub=paste("Date 31.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+ico_all_no_runs_0404=read.csv("~/R/data/icon/stormico/noruns/ico_all_no_runs_2018-04-04.csv")
+timestamp=ico_all_no_runs_0404$timestamp
+timestamp=unique(timestamp)
+stationid=ico_all_no_runs_0404$STATIONS_ID
+stationid=unique(stationid)
+stormicoday0404=NULL
+  for (i in stationid){
+    
+    x=subset(ico_all_no_runs_0404,ico_all_no_runs_0404$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormicoday0404=rbindlist(list(stormicoday0404,new))
+  }
+stormicoday0404=na.omit(stormicoday0404)
+  
+coordinates(stormicoday0404)=c("V5","V6")
+proj4string(stormicoday0404) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormicoday0404, c("RMSE"),main="ICON Mean of hourly RMSE ", sub=paste("Date 04.04.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+```
+
+####GFS
+```{r}
+gfs_all_no_runs_1801=read.csv("~/R/data/gfs/stormgfs/noruns/gfs_all_no_runs_2018-01-18.csv")
+timestamp=gfs_all_no_runs_1801$timestamp
+timestamp=unique(timestamp)
+stationid=gfs_all_no_runs_1801$STATIONS_ID
+stationid=unique(stationid)
+stormgfsday1801=NULL
+  for (i in stationid){
+    
+    x=subset(gfs_all_no_runs_1801,gfs_all_no_runs_1801$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormgfsday1801=rbindlist(list(stormgfsday1801,new))
+  }
+stormgfsday1801=na.omit(stormgfsday1801)
+  
+coordinates(stormgfsday1801)=c("V5","V6")
+proj4string(stormgfsday1801) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormgfsday1801, c("RMSE"),main="GFS Mean of hourly RMSE ", sub=paste("Date 18.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+gfs_all_no_runs_3101=read.csv("~/R/data/gfs/stormgfs/noruns/gfs_all_no_runs_2018-01-31.csv")
+timestamp=gfs_all_no_runs_3101$timestamp
+timestamp=unique(timestamp)
+stationid=gfs_all_no_runs_3101$STATIONS_ID
+stationid=unique(stationid)
+stormgfsday3101=NULL
+  for (i in stationid){
+    
+    x=subset(gfs_all_no_runs_3101,gfs_all_no_runs_3101$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormgfsday3101=rbindlist(list(stormgfsday3101,new))
+  }
+stormgfsday3101=na.omit(stormgfsday3101)
+  
+coordinates(stormgfsday3101)=c("V5","V6")
+proj4string(stormgfsday3101) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormgfsday3101, c("RMSE"),main="GFS Mean of hourly RMSE ", sub=paste("Date 31.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+gfs_all_no_runs_0404=read.csv("~/R/data/gfs/stormgfs/noruns/gfs_all_no_runs_2018-04-04.csv")
+timestamp=gfs_all_no_runs_0404$timestamp
+timestamp=unique(timestamp)
+stationid=gfs_all_no_runs_0404$STATIONS_ID
+stationid=unique(stationid)
+stormgfsday0404=NULL
+  for (i in stationid){
+    
+    x=subset(gfs_all_no_runs_0404,gfs_all_no_runs_0404$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormgfsday0404=rbindlist(list(stormgfsday0404,new))
+  }
+stormgfsday0404=na.omit(stormgfsday0404)
+  
+coordinates(stormgfsday0404)=c("V5","V6")
+proj4string(stormgfsday0404) <- CRS(proj4string(shape))
+
+
+
+
+spplot(stormgfsday0404, c("RMSE"),main="GFS Mean of hourly RMSE ", sub=paste("Date 04.04.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+```
+
+
+
+

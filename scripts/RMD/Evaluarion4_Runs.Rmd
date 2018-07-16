@@ -1,0 +1,177 @@
+---
+title: "Evaluation4_Runs"
+author: "Marike Meijer"
+date: "25 5 2018"
+output: html_document
+---
+
+```{r Libaries, message=FALSE, warning=FALSE}
+library(dplyr)
+library(readr)
+library(Metrics)
+library(sp)
+library(RColorBrewer)
+library(Raster)
+
+```
+
+
+```{r Variables, message=FALSE, warning=FALSE}
+#path
+cospath="~/data/cosmo/csv/pattern/cosmoperday"
+wrfpath="~/data/wrf/csv/pattern/wrfperday"
+gfspath="~/data/gfs/csv/pattern/gfsperday"
+icopath="~/data/icon/csv/pattern/iconperday"
+#colorscheme
+red<-brewer.pal(11,"RdYlGn")
+#shapefile of germany
+shape=shapefile("~/data/test/wrf/csv/germ")
+proj4string(shape)
+WGS84 = CRS("+init=epsg:4326")
+bbox=matrix(c(4,16,45,58),nrow=2,ncol=2, byrow = TRUE)
+#backgroundmap
+gmap=get_map(location = bbox, maptype = "terrain",color="bw")
+bbMap=attr(gmap, 'bb')
+latCenter=with(bbMap, ll.lat + ur.lat)/2
+lonCenter=with(bbMap, ll.lon + ur.lon)/2
+height=with(bbMap, ur.lat - ll.lat)
+width=with(bbMap, ur.lon - ll.lon)
+sp.raster=list('grid.raster', gmap,x=lonCenter, y=latCenter,width=width, height=height,default.units='native',first=T)
+
+```
+
+
+```{r import data}
+################### turn into spatial points data frame
+#wrf
+setwd(wrfpath)
+wrf_filenames=list.files(path=wrfpath)
+wrf_all=rbindlist(lapply(wrf_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+dates=wrf_all$MESS_DATUM
+dates=dates[!duplicated(dates)]
+wrf_all_sp=wrf_all
+coordinates(wrf_all_sp)=c("V5","V6")
+proj4string(wrf_all_sp) <- CRS(proj4string(shape))
+#####################################################################################
+#cosmo
+setwd(cospath)
+cos_filenames=list.files(path=cospath)
+cos_all=rbindlist(lapply(cos_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+datec=cos_all$MESS_DATUM
+datec=datec[!duplicated(datec)]
+cos_all_sp=cos_all
+coordinates(cos_all_sp)=c("V5","V6")
+proj4string(cos_all_sp) <- CRS(proj4string(shape))
+#####################################################################################
+#gfs
+setwd(gfspath)
+gfs_filenames=list.files(path=gfspath)
+gfs_all=rbindlist(lapply(gfs_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+gfs_all_sp=gfs_all
+dateg=gfs_all$MESS_DATUM
+dateg=dateg[!duplicated(dateg)]
+coordinates(gfs_all_sp)=c("V5","V6")
+proj4string(gfs_all_sp) <- CRS(proj4string(shape))
+######################################################################################
+#icon
+setwd(icopath)
+ico_filenames=list.files(path=icopath)
+ico_all=rbindlist(lapply(ico_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+date=ico_all$MESS_DATUM
+date=date[!duplicated(date)]
+ico_all_sp=ico_all
+coordinates(ico_all_sp)=c("V5","V6")
+proj4string(ico_all_sp) <- CRS(proj4string(shape))
+
+```
+
+
+```{r}
+#####
+#run00
+#values
+wrf_00=subset(wrf_all,wrf_all$RUN==0)
+cos_00=subset(cos_all,cos_all$RUN==0)
+ico_00=subset(ico_all,ico_all$RUN==0)
+gfs_00=subset(gfs_all,gfs_all$RUN==0)
+rmse(wrf_00$FX,wrf_00$V7_MAX_DAY)
+rmse(cos_00$FX,cos_00$V7_MAX_DAY)
+rmse(ico_00$FX,ico_00$V7_MAX_DAY)
+rmse(gfs_00$FX,gfs_00$V7_MAX_DAY)
+#####
+#run06
+#####
+wrf_06=subset(wrf_all,wrf_all$RUN==6)
+cos_06=subset(cos_all,cos_all$RUN==6)
+ico_06=subset(ico_all,ico_all$RUN==6)
+gfs_06=subset(gfs_all,gfs_all$RUN==6)
+rmse(wrf_06$FX,wrf_06$V7_MAX_DAY)
+rmse(cos_06$FX,cos_06$V7_MAX_DAY)
+rmse(ico_06$FX,ico_06$V7_MAX_DAY)
+rmse(gfs_06$FX,gfs_06$V7_MAX_DAY)
+#####
+#run12
+#####
+wrf_12=subset(wrf_all,wrf_all$RUN==12)
+cos_12=subset(cos_all,cos_all$RUN==12)
+#ico_12=subset(ico_all,ico_all$RUN==12)
+gfs_12=subset(gfs_all,gfs_all$RUN==12)
+rmse(wrf_12$FX,wrf_12$V7_MAX_DAY)
+rmse(cos_12$FX,cos_12$V7_MAX_DAY)
+#rmse(ico_12$FX,ico_12$V7_MAX_DAY)
+rmse(gfs_12$FX,gfs_12$V7_MAX_DAY)
+#####
+#run18
+#####
+wrf_18=subset(wrf_all,wrf_all$RUN==18)
+cos_18=subset(cos_all,cos_all$RUN==18)
+ico_18=subset(ico_all,ico_all$RUN==18)
+gfs_18=subset(gfs_all,gfs_all$RUN==18)
+rmse(wrf_18$FX,wrf_18$V7_MAX_DAY)
+rmse(cos_18$FX,cos_18$V7_MAX_DAY)
+rmse(ico_18$FX,ico_18$V7_MAX_DAY)
+rmse(gfs_18$FX,gfs_18$V7_MAX_DAY)
+
+
+
+
+```
+
+```{r runs}
+#run 00
+wrf_plots1 <- lapply(1:90, function(x) spplot((subset(wrf_all_sp,wrf_all_sp$MESS_DATUM==dates[x]& wrf_all_sp$RUN==0)),c("RMSE_daily"),main="wrf:RMSE in m/s", sub=paste("Date:",dates[x], "Run:00"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+gfs_plots1 <- lapply(2:92, function(x) spplot((subset(gfs_all_sp,gfs_all_sp$MESS_DATUM==dateg[x]& gfs_all_sp$RUN==0)),c("RMSE_daily"),main="GFS:RMSE in m/s", sub=paste("Date:",dateg[x], "Run:00"),colorkey=T, col.regions=rev(red), cuts=c(0.3,1.5,3.3,5.5,7.9,10.7,13.8,17.1,20.7,24.4,28.4,32.6),edge.col="black",sp.layout=sp.raster))
+ico_plots1 <- lapply(1:90, function(x) spplot((subset(ico_all_sp,ico_all_sp$MESS_DATUM==date[x]& ico_all_sp$RUN==0)),c("RMSE_daily"),main="Icon:RMSE in m/s", sub=paste("Date:",date[x], "Run:00"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+cos_plots1 <- lapply(1:90, function(x) spplot((subset(cos_all_sp,cos_all_sp$MESS_DATUM==datec[x]& cos_all_sp$RUN==0)),c("RMSE_daily"),main="COSMO:RMSE in m/s", sub=paste("Date:",datec[x],"RUN:00"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+
+#run06
+wrf_plots2 <- lapply(1:90, function(x) spplot((subset(wrf_all_sp,wrf_all_sp$MESS_DATUM==dates[x]& wrf_all_sp$RUN==6)),c("RMSE_daily"),main="wrf:RMSE in m/s", sub=paste("Date:",dates[x],"Run:6"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+gfs_plots2 <- lapply(2:92, function(x) spplot((subset(gfs_all_sp,gfs_all_sp$MESS_DATUM==dateg[x]& gfs_all_sp$RUN==6)),c("RMSE_daily"),main="GFS:RMSE in m/s", sub=paste("Date:",dateg[x],"Run:6"),colorkey=T, col.regions=rev(red), cuts=c(0.3,1.5,3.3,5.5,7.9,10.7,13.8,17.1,20.7,24.4,28.4,32.6),edge.col="black",sp.layout=sp.raster))
+ico_plots2 <- lapply(1:90, function(x) spplot((subset(ico_all_sp,ico_all_sp$MESS_DATUM==date[x]& ico_all_sp$RUN==6)),c("RMSE_daily"),main="Icon:RMSE in m/s", sub=paste("Date:",date[x],"Run:6"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+cos_plots2 <- lapply(1:90, function(x) spplot((subset(cos_all_sp,cos_all_sp$MESS_DATUM==datec[x]& cos_all_sp$RUN==6)),c("RMSE_daily"),main="COSMO:RMSE in m/s", sub=paste("Date:",datec[x],"Run:6"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+
+##run12
+wrf_plots3 <- lapply(1:90, function(x) spplot((subset(wrf_all_sp,wrf_all_sp$MESS_DATUM==dates[x]& wrf_all_sp$RUN==12)),c("RMSE_daily"),main="wrf:RMSE in m/s", sub=paste("Date:",dates[x],"Run:12"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16)))
+gfs_plots3 <- lapply(2:92, function(x) spplot((subset(gfs_all_sp,gfs_all_sp$MESS_DATUM==dateg[x]& gfs_all_sp$RUN==12)),c("RMSE_daily"),main="GFS:RMSE in m/s", sub=paste("Date:",dateg[x],"Run:12"),colorkey=T, col.regions=rev(red), cuts=c(0.3,1.5,3.3,5.5,7.9,10.7,13.8,17.1,20.7,24.4,28.4,32.6),edge.col="black",sp.layout=sp.raster))
+#ico_plots3 <- lapply(1:90, function(x) spplot((subset(ico_all_sp,ico_all_sp$MESS_DATUM==date[x]& ico_all_sp$RUN==6)),c("RMSE_daily"),main="Icon:RMSE in m/s", sub=paste("Date:",date[x],"Run:6"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16)))
+cos_plots3 <- lapply(1:90, function(x) spplot((subset(cos_all_sp,cos_all_sp$MESS_DATUM==datec[x]& cos_all_sp$RUN==12)),c("RMSE_daily"),main="COSMO:RMSE in m/s", sub=paste("Date:",datec[x],"Run:12"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+
+##run18
+wrf_plots4 <- lapply(1:90, function(x) spplot((subset(wrf_all_sp,wrf_all_sp$MESS_DATUM==dates[x]& wrf_all_sp$RUN==18)),c("RMSE_daily"),main="wrf:RMSE in m/s", sub=paste("Date:",dates[x],"Run:18"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+gfs_plots4 <- lapply(2:92, function(x) spplot((subset(gfs_all_sp,gfs_all_sp$MESS_DATUM==dateg[x]& gfs_all_sp$RUN==18)),c("RMSE_daily"),main="GFS:RMSE in m/s", sub=paste("Date:",dateg[x],"Run:18"),colorkey=T, col.regions=rev(red), cuts=c(0.3,1.5,3.3,5.5,7.9,10.7,13.8,17.1,20.7,24.4,28.4,32.6),edge.col="black",sp.layout=sp.raster))
+ico_plots4 <- lapply(1:90, function(x) spplot((subset(ico_all_sp,ico_all_sp$MESS_DATUM==date[x]& ico_all_sp$RUN==18)),c("RMSE_daily"),main="Icon:RMSE in m/s", sub=paste("Date:",date[x],"Run:18"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+cos_plots4 <- lapply(1:90, function(x) spplot((subset(cos_all_sp,cos_all_sp$MESS_DATUM==datec[x]& cos_all_sp$RUN==18)),c("RMSE_daily"),main="COSMO:RMSE in m/s", sub=paste("Date:",datec[x],"Run:18"),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster))
+
+
+
+
+
+require(gridExtra)
+for (i in 1:90){
+do.call(grid.arrange, c(wrf_plots1[i],ico_plots1[i],cos_plots1[i],gfs_plots1[i],nrow=2,ncol=2))
+do.call(grid.arrange, c(wrf_plots2[i],ico_plots2[i],cos_plots2[i],gfs_plots2[i],nrow=2,ncol=2))
+do.call(grid.arrange, c(wrf_plots3[i],cos_plots3[i],gfs_plots3[i],nrow=2,ncol=2))
+do.call(grid.arrange, c(wrf_plots4[i],ico_plots4[i],cos_plots4[i],gfs_plots4[i],nrow=2,ncol=2))
+    
+}
+```

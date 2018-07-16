@@ -1,0 +1,292 @@
+---
+title: "Evalution5 Spatial"
+output: html_document
+---
+
+#####Libaries
+```{r Libaries, message=FALSE, warning=FALSE,echo=FALSE}
+library(dplyr)
+library(readr)
+library(data.table)
+library(Metrics)
+library(sp)
+library(RColorBrewer)
+library(raster)
+library(ggmap)
+
+shape=shapefile("~/R/data/other/germ")
+merc = CRS("+init=epsg:3857")
+red<-brewer.pal(11,"RdYlGn")
+germany=shapefile("~/R/data/other/germany/gadm36_DEU_1")
+proj4string(germany) <- CRS("+init=epsg:4326")
+bbox=matrix(c(4,16,45,58),nrow=2,ncol=2, byrow = TRUE)
+#backgroundmap
+gmap=get_map(location = bbox, maptype = "terrain",color="bw")
+bbMap=attr(gmap, 'bb')
+latCenter=with(bbMap, ll.lat + ur.lat)/2
+lonCenter=with(bbMap, ll.lon + ur.lon)/2
+height=with(bbMap, ur.lat - ll.lat)
+width=with(bbMap, ur.lon - ll.lon)
+sp.raster=list('grid.raster', gmap,x=lonCenter, y=latCenter,width=width, height=height,default.units='native',first=T)
+```
+
+```{r}
+fp_all_noruns_cos=read.csv("~/R/data/cosmo/fp_all_noruns_new_cos.csv")
+wrf_all_no_runs <- read.csv("~/R/data/wrf/wrf_all_no_runs.csv",header=T)
+accuracy_wrf <- read.csv("~/R/data/wrf/accuracy_wrf.csv",header = T)
+cos_all_no_runs <- read.csv("~/R/data/cosmo/cos_all_no_runs.csv",header=T)
+accuracy_cos <- read.csv("~/R/data/cosmo/accuracy_cos.csv",header = T)
+ico_all_no_runs <- read.csv("~/R/data/icon/ico_all_no_runs.csv",header=T)
+accuracy_ico <- read.csv("~/R/data/icon/accuracy_ico.csv",header = T)
+gfs_all_no_runs <- read.csv("~/R/data/gfs/gfs_all_no_runs.csv",header=T)
+accuracy_gfs <- read.csv("~/R/data/gfs/accuracy_gfs.csv",header = T)
+```
+
+
+```{r}
+# setwd(wrfpath)
+# wrf_filenames=list.files(path=wrfpath)
+# wrf_all=rbindlist(lapply(wrf_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+# dates=wrf_all$MESS_DATUM
+# dates=dates[!duplicated(dates)]
+# wrf_all_sp=wrf_all
+# coordinates(wrf_all_sp)=c("V5","V6")
+# proj4string(wrf_all_sp) <- CRS("+init=epsg:4326")
+# oneday=subset(wrf_all_sp, wrf_all_sp$Predate=="2018-01-18")
+
+alltimewrf=NULL
+stationid=unique(wrf_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(wrf_all_no_runs,wrf_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimewrf=rbindlist(list(alltimewrf,new))
+}
+coordinates(alltimewrf)=c("V5","V6")
+proj4string(alltimewrf) <- CRS("+init=epsg:4326")
+
+#proj4string(alltimewrf)<-CRS(merc)
+
+```
+
+
+
+```{r}
+
+spplot(alltimewrf, c("RMSE"),main="Root Mean Square Error", sub="WRF: January-April 2018",colorkey=T,  cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",cex=0.8,sp.layout=sp.raster,col.regions=rev(red))
+
+spatialag=aggregate(alltimewrf,germany,mean,na.rm=TRUE)
+spplot(spatialag, c("RMSE"),
+    main = "Root Mean Square Error",colorkey=T,col.regions=rev(red),cuts=6,sub="WRF: January-April 2018")
+
+```
+
+
+
+```{r}
+wrf_all_no_runs=read.csv("~/R/data/wrf/wrf_all_no_runs.csv")
+cos_all_no_runs <- read.csv("~/R/data/cosmo/cos_all_no_runs.csv",header=T)
+ico_all_no_runs <- read.csv("~/R/data/icon/ico_all_no_runs.csv",header=T)
+gfs_all_no_runs <- read.csv("~/R/data/gfs/gfs_all_no_runs.csv",header=T)
+
+
+
+alltimewrf=NULL
+stationid=unique(wrf_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(wrf_all_no_runs,wrf_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimewrf=rbindlist(list(alltimewrf,new))
+}
+
+alltimeico=NULL
+stationid=unique(ico_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(ico_all_no_runs,ico_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimeico=rbindlist(list(alltimeico,new))
+}
+
+alltimecos=NULL
+stationid=unique(cos_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(cos_all_no_runs,cos_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimecos=rbindlist(list(alltimecos,new))
+}
+
+alltimegfs=NULL
+stationid=unique(gfs_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(gfs_all_no_runs,gfs_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimegfs=rbindlist(list(alltimegfs,new))
+}
+
+
+
+coordinates(alltimewrf)=c("V5","V6")
+proj4string(alltimewrf) <- CRS("+init=epsg:4326")
+coordinates(alltimecos)=c("V5","V6")
+proj4string(alltimecos) <- CRS("+init=epsg:4326")
+coordinates(alltimeico)=c("V5","V6")
+proj4string(alltimeico) <- CRS("+init=epsg:4326")
+coordinates(alltimegfs)=c("V5","V6")
+proj4string(alltimegfs) <- CRS("+init=epsg:4326")
+```
+
+
+```{r}
+
+spatialagwrf=aggregate(alltimewrf,germany,mean,na.rm=TRUE)
+spplot(spatialagwrf, c("RMSE"),
+    main = "Spatial Aggregation of RMSE",colorkey=T,col.regions=rev(red),at=c(1,1.5,2,2.5,3,3.5,4,4.5),sub="WRF: January-April 2018")
+
+spatialagcos=aggregate(alltimecos,germany,mean,na.rm=TRUE)
+spplot(spatialagcos, c("RMSE"),
+    main = "Spatial Aggregation of RMSE",colorkey=T,col.regions=rev(red),at=c(1,1.5,2,2.5,3,3.5,4,4.5),cuts=6,sub="COSMO: January-April 2018")
+
+spatialagico=aggregate(alltimeico,germany,mean,na.rm=TRUE)
+spplot(spatialagico, c("RMSE"),
+    main = "Spatial Aggregation of RMSE",colorkey=T,col.regions=rev(red),at=c(1,1.5,2,2.5,3,3.5,4,4.5),cuts=6,sub="ICON: January-April 2018")
+
+spatialaggfs=aggregate(alltimegfs,germany,mean,na.rm=TRUE)
+spplot(spatialaggfs, c("RMSE"),
+    main = "Spatial Aggregation of RMSE",colorkey=T,col.regions=rev(red),at=c(1,1.5,2,2.5,3,3.5,4,4.5),cuts=6,sub="GFS: January-April 2018")
+
+
+```
+
+
+
+```{r}
+#stormevents
+
+setwd("~/R/data/wrf/stormwrf/noruns")
+wrf_all_no_runs_1801=read.csv("~/R/data/wrf/stormwrf/noruns/wrf_all_no_runs_2018-01-18.csv")
+timestamp=wrf_all_no_runs_1801$timestamp
+timestamp=unique(timestamp)
+stationid=wrf_all_no_runs_1801$STATIONS_ID
+stationid=unique(stationid)
+stormwrfday1801=NULL
+  for (i in stationid){
+    
+    x=subset(wrf_all_no_runs_1801,wrf_all_no_runs_1801$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormwrfday1801=rbindlist(list(stormwrfday1801,new))
+  }
+stormwrfday1801=na.omit(stormwrfday1801)
+  
+coordinates(stormwrfday1801)=c("V5","V6")
+proj4string(stormwrfday1801) <- CRS("+init=epsg:4326")
+
+spatialafwrfs=aggregate(stormwrfday1801,germany,mean,na.rm=TRUE)
+spplot(spatialafwrfs, c("RMSE"),
+    main = "Root Mean Square Error",colorkey=T,col.regions=rev(red),at=c(0,1,2,3,4,5,6,7),cuts=6,sub="WRF: 18-01-2018")
+
+
+spplot(stormwrfday1801, c("RMSE"),main="WRF Mean of hourly RMSE ", sub=paste("Date 18.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+wrf_all_no_runs_3101=read.csv("~/R/data/wrf/stormwrf/noruns/wrf_all_no_runs_2018-01-31.csv")
+timestamp=wrf_all_no_runs_3101$timestamp
+timestamp=unique(timestamp)
+stationid=wrf_all_no_runs_3101$STATIONS_ID
+stationid=unique(stationid)
+stormwrfday3101=NULL
+  for (i in stationid){
+    
+    x=subset(wrf_all_no_runs_3101,wrf_all_no_runs_3101$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormwrfday3101=rbindlist(list(stormwrfday3101,new))
+  }
+stormwrfday3101=na.omit(stormwrfday3101)
+  
+coordinates(stormwrfday3101)=c("V5","V6")
+proj4string(stormwrfday3101) <- CRS("+init=epsg:4326")
+
+
+
+
+spplot(stormwrfday3101, c("RMSE"),main="WRF Mean of hourly RMSE ", sub=paste("Date 31.01.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+wrf_all_no_runs_0404=read.csv("~/R/data/wrf/stormwrf/noruns/wrf_all_no_runs_2018-04-04.csv")
+timestamp=wrf_all_no_runs_0404$timestamp
+timestamp=unique(timestamp)
+stationid=wrf_all_no_runs_0404$STATIONS_ID
+stationid=unique(stationid)
+stormwrfday0404=NULL
+  for (i in stationid){
+    
+    x=subset(wrf_all_no_runs_0404,wrf_all_no_runs_0404$STATIONS_ID==i)
+    new=list(date=x$date[1],STATIONS_ID=x$STATIONS_ID[1], V5=x$V5[1], V6=x$V6[1], RMSE=mean(x$RMSE), Stationshoehe=x$Stationshoehe[1])
+    stormwrfday0404=rbindlist(list(stormwrfday0404,new))
+  }
+stormwrfday0404=na.omit(stormwrfday0404)
+  
+coordinates(stormwrfday0404)=c("V5","V6")
+proj4string(stormwrfday0404) <- CRS("+init=epsg:4326")
+
+
+
+
+spplot(stormwrfday0404, c("RMSE"),main="WRF Mean of hourly RMSE ", sub=paste("Date 04.04.18"),colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+
+
+
+
+```
+###Correlation between Altitude and RMSE 
+```{r}
+cor(alltimewrf$RMSE,alltimewrf$Stationshoehe)
+cor(alltimecos$RMSE,alltimecos$Stationshoehe)
+cor(alltimeico$RMSE,alltimeico$Stationshoehe)
+cor(alltimegfs$RMSE,alltimegfs$Stationshoehe)
+```
+
+```{r}
+setwd("~/R/data/wrf/stormwrf/noruns")
+wrf_filenames=list.files(path="~/R/data/wrf/stormwrf/noruns")
+wrf_all=rbindlist(lapply(wrf_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+wrf_all=na.omit(wrf_all)
+cor(wrf_all$RMSE,wrf_all$Stationshoehe)
+coordinates(wrf_all)=c("V5","V6")
+proj4string(wrf_all) <- CRS("+init=epsg:4326")
+wrf_all=na.omit(wrf_all)
+spatialagwrfstorm=aggregate(wrf_all,germany,mean,na.rm=TRUE)
+spplot(spatialagwrfstorm, c("RMSE"),
+    main = "Spatial Aggregation of RMSE",colorkey=T,col.regions=rev(red),at=c(1,1.5,2,2.5,3,3.5,4,4.5),sub="WRF: Storm Events")
+
+setwd("~/R/data/cosmo/stormcos/noruns")
+cos_filenames=list.files(path="~/R/data/cosmo/stormcos/noruns")
+cos_all=rbindlist(lapply(cos_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+cos_all=na.omit(cos_all)
+cor(cos_all$RMSE,cos_all$Stationshoehe)
+coordinates(cos_all)=c("V5","V6")
+proj4string(cos_all) <- CRS("+init=epsg:4326")
+cos_all=na.omit(cos_all)
+spatialagcosstorm=aggregate(cos_all,germany,mean,na.rm=TRUE)
+spplot(spatialagcosstorm, c("RMSE"),
+    main = "Spatial Aggregation of RMSE",colorkey=T,col.regions=rev(red),at=c(1,1.5,2,2.5,3,3.5,4,4.5),sub="COSMO: Storm Events")
+
+
+setwd("~/R/data/icon/stormico/noruns")
+ico_filenames=list.files(path="~/R/data/icon/stormico/noruns")
+ico_all=rbindlist(lapply(ico_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+ico_all=na.omit(ico_all)
+cor(ico_all$RMSE,ico_all$Stationshoehe)
+coordinates(ico_all)=c("V5","V6")
+proj4string(ico_all) <- CRS("+init=epsg:4326")
+ico_all=na.omit(ico_all)
+spatialagicostorm=aggregate(ico_all,germany,mean,na.rm=TRUE)
+spplot(spatialagicostorm, c("RMSE"),
+    main = "Spatial Aggregation of RMSE",colorkey=T,col.regions=rev(red),at=c(1,1.5,2,2.5,3,3.5,4,4.5),sub="icon: Storm Events")
+
+coordinates(spatialagicostorm)
+
+
+```
+
+
+

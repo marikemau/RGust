@@ -1,0 +1,584 @@
+---
+title: "Modelevalation_results"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(readr)
+library(data.table)
+library(Metrics)
+library(ggplot2)
+library(lubridate)
+source("~/R/scripts/evaluationstatistic/statisticmethodsverification.R")
+
+```
+
+
+
+```{r}
+cospath="~/R/data/cosmo/cosmoperday"
+wrfpath="~/R/data/wrf/wrfperday"
+gfspath="~/R/data/gfs/gfsperday"
+icopath="~/R/data/icon/iconperday"
+#wrf
+setwd(wrfpath)
+wrf_filenames=list.files(path=wrfpath)
+wrf_all=rbindlist(lapply(wrf_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+#cosmo
+setwd(cospath)
+cos_filenames=list.files(path=cospath)
+cos_all=rbindlist(lapply(cos_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+#gfs
+setwd(gfspath)
+gfs_filenames=list.files(path=gfspath)
+gfs_all=rbindlist(lapply(gfs_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+#icon
+setwd(icopath)
+ico_filenames=list.files(path=icopath)
+ico_all=rbindlist(lapply(ico_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+```
+
+
+
+
+```{r monthly, echo=FALSE}
+wrf_jan=read.csv("~/R/data/wrf/wrf_monthly_jan.csv",header = T)
+wrf_feb=read.csv("~/R/data/wrf/wrf_monthly_feb.csv",header = T)
+wrf_mar=read.csv("~/R/data/wrf/wrf_monthly_mar.csv",header = T)
+wrf_apr=read.csv("~/R/data/wrf/wrf_monthly_apr.csv",header = T)
+ico_jan=read.csv("~/R/data/icon/ico_monthly_jan.csv",header = T)
+ico_feb=read.csv("~/R/data/icon/ico_monthly_feb.csv",header = T)
+ico_mar=read.csv("~/R/data/icon/ico_monthly_mar.csv",header = T)
+ico_apr=read.csv("~/R/data/icon/ico_monthly_apr.csv",header = T)
+cos_jan=read.csv("~/R/data/cosmo/cos_monthly_jan.csv",header = T)
+cos_feb=read.csv("~/R/data/cosmo/cos_monthly_feb.csv",header = T)
+cos_mar=read.csv("~/R/data/cosmo/cos_monthly_mar.csv",header = T)
+cos_apr=read.csv("~/R/data/cosmo/cos_monthly_apr.csv",header = T)
+gfs_jan=read.csv("~/R/data/gfs/gfs_monthly_jan.csv",header = T)
+gfs_feb=read.csv("~/R/data/gfs/gfs_monthly_feb.csv",header = T)
+gfs_mar=read.csv("~/R/data/gfs/gfs_monthly_mar.csv",header = T)
+gfs_apr=read.csv("~/R/data/gfs/gfs_monthly_apr.csv",header = T)
+
+
+#Summary of each Months of Mean of all all Stations 
+
+###
+#January
+###
+bias(wrf_jan$FX,wrf_jan$V7_MAX)
+bias(cos_jan$FX,cos_jan$V7_MAX)
+bias(ico_jan$FX,ico_jan$V7_MAX)
+bias(gfs_jan$FX,gfs_jan$V7_MAX)
+rmse(wrf_jan$FX,wrf_jan$V7_MAX)
+rmse(cos_jan$FX,cos_jan$V7_MAX)
+rmse(ico_jan$FX,ico_jan$V7_MAX)
+rmse(gfs_jan$FX,gfs_jan$V7_MAX)
+cor(wrf_jan$FX,wrf_jan$V7_MAX)
+cor(cos_jan$FX,cos_jan$V7_MAX)
+cor(ico_jan$FX,ico_jan$V7_MAX)
+cor(gfs_jan$FX,gfs_jan$V7_MAX)
+
+
+###
+#February
+###
+bias(wrf_feb$FX,wrf_feb$V7_MAX)
+bias(cos_feb$FX,cos_feb$V7_MAX)
+bias(ico_feb$FX,ico_feb$V7_MAX)
+bias(gfs_feb$FX,gfs_feb$V7_MAX)
+rmse(wrf_feb$FX,wrf_feb$V7_MAX)
+rmse(cos_feb$FX,cos_feb$V7_MAX)
+rmse(ico_feb$FX,ico_feb$V7_MAX)
+rmse(gfs_feb$FX,gfs_feb$V7_MAX)
+
+cor(wrf_feb$FX,wrf_feb$V7_MAX)
+cor(cos_feb$FX,cos_feb$V7_MAX)
+cor(ico_feb$FX,ico_feb$V7_MAX)
+cor(gfs_feb$FX,gfs_feb$V7_MAX)
+###
+#March
+###
+bias(wrf_mar$FX,wrf_mar$V7_MAX)
+bias(cos_mar$FX,cos_mar$V7_MAX)
+bias(ico_mar$FX,ico_mar$V7_MAX)
+bias(gfs_mar$FX,gfs_mar$V7_MAX)
+rmse(wrf_mar$FX,wrf_mar$V7_MAX)
+rmse(cos_mar$FX,cos_mar$V7_MAX)
+rmse(ico_mar$FX,ico_mar$V7_MAX)
+rmse(gfs_mar$FX,gfs_mar$V7_MAX)
+
+
+###
+#April
+###
+bias(wrf_apr$FX,wrf_apr$V7_MAX)
+bias(cos_apr$FX,cos_apr$V7_MAX)
+bias(ico_apr$FX,ico_apr$V7_MAX)
+bias(gfs_apr$FX,gfs_apr$V7_MAX)
+
+rmse(wrf_apr$FX,wrf_apr$V7_MAX)
+rmse(cos_apr$FX,cos_apr$V7_MAX)
+rmse(ico_apr$FX,ico_apr$V7_MAX)
+rmse(gfs_apr$FX,gfs_apr$V7_MAX)
+cor(wrf_apr$FX,wrf_apr$V7_MAX)
+cor(cos_apr$FX,cos_apr$V7_MAX)
+cor(ico_apr$FX,ico_apr$V7_MAX)
+cor(gfs_apr$FX,gfs_apr$V7_MAX)
+
+########
+########
+#All
+########
+bias(wrf_all$FX, wrf_all$V7_MAX_DAY)
+bias(cos_all$FX, cos_all$V7_MAX_DAY)
+bias(ico_all$FX, ico_all$V7_MAX_DAY)
+bias(gfs_all$FX, gfs_all$V7_MAX_DAY)
+rmse(wrf_all$FX, wrf_all$V7_MAX_DAY)
+rmse(cos_all$FX, cos_all$V7_MAX_DAY)
+rmse(ico_all$FX, ico_all$V7_MAX_DAY)
+rmse(gfs_all$FX, gfs_all$V7_MAX_DAY)
+
+cor(wrf_all$FX, wrf_all$V7_MAX_DAY)
+cor(cos_all$FX, cos_all$V7_MAX_DAY)
+cor(ico_all$FX, ico_all$V7_MAX_DAY)
+cor(gfs_all$FX, gfs_all$V7_MAX_DAY)
+
+
+
+```
+
+
+
+
+```{r}
+##Comparision: Values
+###Whole Observationtime
+
+
+wrf_all_no_runs <- read.csv("~/R/data/wrf/wrf_all_no_runs.csv",header=T)
+accuracy_wrf <- read.csv("~/R/data/wrf/accuracy_wrf.csv",header = T)
+accuracy_wrf$X=NULL
+accuracy_wrf=unique(accuracy_wrf)
+cos_all_no_runs <- read.csv("~/R/data/cosmo/cos_all_no_runs.csv",header=T)
+accuracy_cos <- read.csv("~/R/data/cosmo/accuracy_cos.csv",header = T)
+accuracy_cos$X=NULL
+accuracy_cos=unique(accuracy_cos)
+ico_all_no_runs <- read.csv("~/R/data/icon/ico_all_no_runs.csv",header=T)
+accuracy_ico <- read.csv("~/R/data/icon/accuracy_ico.csv",header = T)
+accuracy_ico$X=NULL
+accuracy_ico=unique(accuracy_ico)
+gfs_all_no_runs <- read.csv("~/R/data/gfs/gfs_all_no_runs.csv",header=T)
+accuracy_gfs <- read.csv("~/R/data/gfs/accuracy_gfs.csv",header = T)
+accuracy_gfs$X=NULL
+accuracy_gfs=unique(accuracy_gfs)
+```
+
+
+```{r}
+rmse_wrf=rmse(wrf_all_no_runs$FX,wrf_all_no_runs$V7_MAX_DAY)
+rmse_cos=rmse(cos_all_no_runs$FX,cos_all_no_runs$V7_MAX_DAY)
+rmse_ico=rmse(ico_all_no_runs$FX,ico_all_no_runs$V7_MAX_DAY)
+rmse_gfs=rmse(gfs_all_no_runs$FX,gfs_all_no_runs$V7_MAX_DAY)
+####################################################
+#Accuracy
+accuracy(wrf_all_no_runs$FX,wrf_all_no_runs$V7_MAX_DAY)
+accuracy(cos_all_no_runs$FX,cos_all_no_runs$V7_MAX_DAY)
+accuracy(ico_all_no_runs$FX,ico_all_no_runs$V7_MAX_DAY)
+accuracy(gfs_all_no_runs$FX,gfs_all_no_runs$V7_MAX_DAY)
+#Correlation
+cor(wrf_all_no_runs$FX,wrf_all_no_runs$V7_MAX_DAY)
+cor(cos_all_no_runs$FX,cos_all_no_runs$V7_MAX_DAY)
+cor(ico_all_no_runs$FX,ico_all_no_runs$V7_MAX_DAY)
+cor(gfs_all_no_runs$FX,gfs_all_no_runs$V7_MAX_DAY)
+
+#bias
+bias(wrf_all_no_runs$FX,wrf_all_no_runs$V7_MAX_DAY)
+bias(cos_all_no_runs$FX,cos_all_no_runs$V7_MAX_DAY)
+bias(ico_all_no_runs$FX,ico_all_no_runs$V7_MAX_DAY)
+bias(gfs_all_no_runs$FX,gfs_all_no_runs$V7_MAX_DAY)
+
+
+#Reduction of Variance
+#icon/wrf 0.5025
+reductionOfVariance(rmseF = rmse_ico, rmseAF =rmse_wrf )
+#icon/cosmo 0.0461
+reductionOfVariance(rmseF = rmse_ico, rmseAF =rmse_cos )
+#icon/gfs 0.3472
+reductionOfVariance(rmseF = rmse_ico, rmseAF =rmse_gfs )
+#cosmo/wrf 0.4785
+reductionOfVariance(rmseF = rmse_cos, rmseAF =rmse_wrf )
+#cosmo/icon -0.04
+reductionOfVariance(rmseF = rmse_cos, rmseAF =rmse_ico )
+#cosmo/gfs 0.31
+reductionOfVariance(rmseF = rmse_cos, rmseAF =rmse_gfs )
+#wrf/cos -0.9175558
+reductionOfVariance(rmseF = rmse_wrf, rmseAF =rmse_cos )
+#wrf/icon -1.010244
+reductionOfVariance(rmseF = rmse_wrf, rmseAF =rmse_ico )
+#wrf/gfs  -0.312304
+reductionOfVariance(rmseF = rmse_wrf, rmseAF =rmse_gfs )
+#gfs/wrf 0.2379814
+reductionOfVariance(rmseF = rmse_gfs, rmseAF =rmse_wrf )
+#gfs/icon -0.5318435
+reductionOfVariance(rmseF = rmse_gfs, rmseAF =rmse_ico )
+#gfs/cos-0.4612131
+reductionOfVariance(rmseF = rmse_gfs, rmseAF =rmse_cos )
+
+
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+run1=subset(accuracy_wrf,accuracy_wrf$RUN==00)
+run2=subset(accuracy_wrf,accuracy_wrf$RUN==06)
+run3=subset(accuracy_wrf,accuracy_wrf$RUN==12)
+run4=subset(accuracy_wrf,accuracy_wrf$RUN==18)
+
+
+
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+run1$Date=as.Date(run1$Date)
+run2$Date=as.Date(run2$Date)
+run3$Date=as.Date(run3$Date)
+run4$Date=as.Date(run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run1,aes(y=RMSE, col="RUN 00 UTC")) + 
+  geom_line(data=run2,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=run3,aes(y=RMSE, col="RUN 12 UTC")) +   geom_line(data=run4,aes(y=RMSE, col="RUN 18 UTC")) + labs(title="Root Mean Square Error",  subtitle="WRF", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="blue", "RUN 18 UTC"="orange")) + theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "2 week", date_labels = "%d.%m")+theme(panel.grid.minor = element_blank()) +
+theme(panel.background = element_rect(fill = "white", colour = "grey50"))
+###################################
+cos_run1=subset(accuracy_cos,accuracy_cos$RUN==00)
+cos_run2=subset(accuracy_cos,accuracy_cos$RUN==06)
+cos_run3=subset(accuracy_cos,accuracy_cos$RUN==12)
+cos_run4=subset(accuracy_cos,accuracy_cos$RUN==18)
+
+
+theme_set(theme_bw())
+
+cos_run1$Date=as.Date(cos_run1$Date)
+cos_run2$Date=as.Date(cos_run2$Date)
+cos_run3$Date=as.Date(cos_run3$Date)
+cos_run4$Date=as.Date(cos_run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=cos_run1,aes(y=RMSE, col="RUN 00 UTC")) + 
+  geom_line(data=cos_run2,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=cos_run3,aes(y=RMSE, col="RUN 12 UTC")) +   geom_line(data=cos_run4,aes(y=RMSE, col="RUN 18 UTC")) + 
+  labs(title="Root Mean Square Error ", 
+       subtitle="COSMO", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="blue", "RUN 18 UTC"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+###################################
+ico_run1=subset(accuracy_ico,accuracy_ico$RUN==00)
+ico_run2=subset(accuracy_ico,accuracy_ico$RUN==06)
+#ico_run3=subset(accuracy_ico,accuracy_ico$RUN==12)
+ico_run4=subset(accuracy_ico,accuracy_ico$RUN==18)
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+ico_run1$Date=as.Date(ico_run1$Date)
+ico_run2$Date=as.Date(ico_run2$Date)
+#ico_run3$Date=as.Date(ico_run3$Date)
+ico_run4$Date=as.Date(ico_run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=ico_run1,aes(y=RMSE, col="RUN 00 UTC")) + 
+  geom_line(data=ico_run2,aes(y=RMSE, col="RUN 06 UTC"))+   geom_line(data=ico_run4,aes(y=RMSE, col="RUN 18 UTC")) + 
+  labs(title="RMSE", 
+       subtitle="ICON", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d", "RUN 18 UTC"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+###################################
+gfs_run1=subset(accuracy_gfs,accuracy_gfs$RUN==00)
+gfs_run2=subset(accuracy_gfs,accuracy_gfs$RUN==06)
+gfs_run3=subset(accuracy_gfs,accuracy_gfs$RUN==12)
+gfs_run4=subset(accuracy_gfs,accuracy_gfs$RUN==18)
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+gfs_run1$Date=as.Date(gfs_run1$Date)
+gfs_run2$Date=as.Date(gfs_run2$Date)
+gfs_run3$Date=as.Date(gfs_run3$Date)
+gfs_run4$Date=as.Date(gfs_run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=gfs_run1,aes(y=RMSE_allvalues, col="RUN 00 UTC")) + 
+  geom_line(data=gfs_run2,aes(y=RMSE_allvalues, col="RUN 06 UTC")) +   geom_line(data=gfs_run3,aes(y=RMSE_allvalues, col="RUN 12 UTC")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="RUN 18 UTC")) + 
+  labs(title="Root Mean Square Error", 
+       subtitle="GFS", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="blue", "RUN 18 UTC"="orange")) +scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "2 week", date_labels = "%d.%m")+ 
+  theme(panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle = 75, hjust = 1))
+# plot
+# ggplot(NULL, aes(x=Date,y=BIAS)) + 
+#   geom_line(data=gfs_run1,aes(y=BIAS, col="RUN 00 UTC")) + 
+#   geom_line(data=gfs_run2,aes(y=BIAS, col="RUN 06 UTC")) +   geom_line(data=gfs_run3,aes(y=BIAS, col="RUN 12 UTC")) +   geom_line(data=gfs_run4,aes(y=BIAS, col="RUN 18 UTC")) + 
+#   labs(title="Root Mean Square Error", 
+#        subtitle="GFS", 
+#       y="BIAS") +  # title and caption
+#    # change to monthly ticks and labels
+#   scale_color_manual(name="", 
+#                      values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="blue", "RUN 18 UTC"="orange")) +scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "2 week", date_labels = "%d.%m")+ 
+#   theme(panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle = 75, hjust = 1))
+###################
+###############################################################
+#Run00
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run1,aes(y=RMSE, col="WRF")) + 
+  geom_line(data=cos_run1,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run1,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run1,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Time Series of Root Mean Square Error", 
+       subtitle="RUN 00 UTC", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange"))+  scale_x_date(date_breaks="2 week",date_labels = "%d")+  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+
+###############################################################
+#Run06
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run2,aes(y=RMSE, col="RWRF")) + 
+  geom_line(data=cos_run2,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run2,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run2,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Root Mean Square Error", 
+       subtitle="RUN 06 UTC", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+###############################################################
+#Run12
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run3,aes(y=RMSE, col="WRF")) + 
+  geom_line(data=cos_run3,aes(y=RMSE, col="COSMO")) +   geom_line(data=gfs_run3,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Root Mean Square Error", 
+       subtitle="RUN 12 UTC", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("WRF"="#00ba38", "COSMO"="#f8766d", "GFS"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+
+###############################################################
+#Run18
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run4,aes(y=RMSE, col="WRF")) + 
+  geom_line(data=cos_run4,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run4,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Root Mean Square Error", 
+       subtitle="RUN 18 UTC", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange")) +scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "2 week", date_labels = "%d.%m")+  # line color
+  theme(panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle = 75, hjust = 1))  # turn off minor grid
+```
+
+
+
+
+
+```{r}
+
+# # plot
+# png(file="~/R/data/Scripts/plots/wrf_runs.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE)) + 
+#   geom_line(data=run1,aes(y=RMSE, col="RUN 00 UTC")) + 
+#   geom_line(data=run2,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=run3,aes(y=RMSE, col="RUN 12 UTC")) +   geom_line(data=run4,aes(y=RMSE, col="RUN 18 UTC")) + labs(title="Root Mean Square Error",  subtitle="WRF", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin = margin(1, 1, 1, 1)
+# )
+# 
+#  dev.off()
+#  
+#  # plot cosmo
+# png(file="~/R/data/Scripts/plots/cosmo_runs.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE)) + 
+#   geom_line(data=cos_run1,aes(y=RMSE, col="RUN 00 UTC")) + 
+#   geom_line(data=cos_run2,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=cos_run3,aes(y=RMSE, col="RUN 12 UTC")) +   geom_line(data=cos_run4,aes(y=RMSE, col="RUN 18 UTC")) + labs(title="Root Mean Square Error",  subtitle="COSMO", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin=margin( 1,1,1,1)
+# 
+# )
+# 
+#  dev.off()
+#  
+#  
+#  
+#   # plot gfs
+# png(file="~/R/data/Scripts/plots/gfs_runs.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE_allvalues)) + 
+#   geom_line(data=gfs_run1,aes(y=RMSE_allvalues, col="RUN 00 UTC")) + 
+#   geom_line(data=gfs_run2,aes(y=RMSE_allvalues, col="RUN 06 UTC")) +   geom_line(data=gfs_run3,aes(y=RMSE_allvalues, col="RUN 12 UTC")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="RUN 18 UTC")) + labs(title="Root Mean Square Error",  subtitle="GFS", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin=margin( 1,1,1,1)
+# 
+# )
+# 
+#  dev.off()
+#  
+#  ###icon
+#  png(file="~/R/data/Scripts/plots/icon_runs.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE)) + 
+#   geom_line(data=ico_run1,aes(y=RMSE, col="RUN 00 UTC")) + 
+#   geom_line(data=ico_run2,aes(y=RMSE, col="RUN 06 UTC"))  +   geom_line(data=ico_run4,aes(y=RMSE, col="RUN 18 UTC")) + labs(title="Root Mean Square Error",  subtitle="ICON", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin=margin( 1,1,1,1)
+# 
+# )
+# 
+#  dev.off()
+# ```
+# ```{r}
+# 
+# # plot 00
+# png(file="~/R/data/Scripts/plots/runs/0run.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE)) + 
+#   geom_line(data=run1,aes(y=RMSE, col="WRF")) + 
+#   geom_line(data=cos_run1,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run1,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run1,aes(y=RMSE_allvalues, col="GFS")) + 
+#   labs(title="Root Mean Square Error", subtitle="RUN 00 UTC",y="RMSE") + scale_color_manual(name="", values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange"))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ 
+#   theme(panel.grid.minor = element_blank()) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin=margin( 1,1,1,1)
+# 
+# )
+# dev.off()
+# 
+# 
+# # plot 06
+# png(file="~/R/data/Scripts/plots/runs/6run.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE)) + 
+#   geom_line(data=run2,aes(y=RMSE, col="WRF")) + 
+#   geom_line(data=cos_run2,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run2,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run2,aes(y=RMSE_allvalues, col="GFS")) + 
+#   labs(title="Root Mean Square Error", subtitle="RUN 06 UTC",y="RMSE") + scale_color_manual(name="", values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange"))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ 
+#   theme(panel.grid.minor = element_blank()) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin=margin( 1,1,1,1)
+# 
+# )
+# dev.off()
+# 
+# # plot 12
+# png(file="~/R/data/Scripts/plots/runs/12run.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE)) + 
+#   geom_line(data=run3,aes(y=RMSE, col="WRF")) + 
+#   geom_line(data=cos_run3,aes(y=RMSE, col="COSMO")) + geom_line(data=gfs_run3,aes(y=RMSE_allvalues, col="GFS")) + 
+#   labs(title="Root Mean Square Error", subtitle="RUN 12 UTC",y="RMSE") + scale_color_manual(name="", values = c("WRF"="#00ba38", "COSMO"="#f8766d", "GFS"="orange"))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ 
+#   theme(panel.grid.minor = element_blank()) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin=margin( 1,1,1,1)
+# 
+# )
+# dev.off()
+# 
+# ###
+# # plot 18
+# png(file="~/R/data/Scripts/plots/runs/18run.png", width = 720, height = 576, units = "px")
+# ggplot(NULL, aes(x=Date,y=RMSE)) + 
+#   geom_line(data=run4,aes(y=RMSE, col="WRF")) + 
+#   geom_line(data=cos_run4,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run4,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="GFS")) + 
+#   labs(title="Root Mean Square Error", subtitle="RUN 18 UTC",y="RMSE") + scale_color_manual(name="", values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange"))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ 
+#   theme(panel.grid.minor = element_blank()) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+ theme(
+#   legend.position = c(.99, .99),
+#   legend.justification = c("right", "top"),
+#   legend.box.just = "top",
+#   legend.margin=margin( 1,1,1,1)
+# 
+# )
+# dev.off()
+# 
+# 
+
+
+```
+
+```{r}
+
+run06=ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run2,aes(y=RMSE, col="WRF")) + 
+  geom_line(data=cos_run2,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run2,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run2,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Root Mean Square Error", subtitle="RUN 06 UTC",y="RMSE") + scale_color_manual(name="", values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange"))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ 
+  theme(panel.grid.minor = element_blank()) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin=margin( 1,1,1,1)
+
+)
+
+run12=ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run3,aes(y=RMSE, col="WRF")) + 
+  geom_line(data=cos_run3,aes(y=RMSE, col="COSMO")) + geom_line(data=gfs_run3,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Root Mean Square Error", subtitle="RUN 12 UTC",y="RMSE") + scale_color_manual(name="", values = c("WRF"="#00ba38", "COSMO"="#f8766d", "GFS"="orange"))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ 
+  theme(panel.grid.minor = element_blank()) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin=margin( 1,1,1,1)
+
+)
+run18=ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run4,aes(y=RMSE, col="WRF")) + 
+  geom_line(data=cos_run4,aes(y=RMSE, col="COSMO")) +   geom_line(data=ico_run4,aes(y=RMSE, col="ICON")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="GFS")) + 
+  labs(title="Root Mean Square Error", subtitle="RUN 18 UTC",y="RMSE") + scale_color_manual(name="", values = c("WRF"="#00ba38", "COSMO"="#f8766d","ICON"="blue", "GFS"="orange"))+scale_x_date(breaks = seq(as.Date("2018-01-18"), as.Date("2018-04-30"), by="1 week"), date_minor_breaks = "day", date_labels = "%d.%m")+ 
+  theme(panel.grid.minor = element_blank()) + scale_y_continuous(breaks = seq(0, 14, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin=margin( 1,1,1,1)
+
+)
+
+```
+

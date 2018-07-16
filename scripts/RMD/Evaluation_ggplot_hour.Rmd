@@ -1,0 +1,329 @@
+---
+title: "Modelseval_hour"
+author: "Marike Meijer"
+date: "20 6 2018"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(readr)
+library(data.table)
+library(Metrics)
+library(ggplot2)
+library(lubridate)
+```
+
+```{r}
+wrf_all_no_runs_0118=read.csv("~/R/data/wrf/stormwrf/wrf_all_no_runs_2018-01-18.csv",header=T)
+#ico_all_no_runs_0118=read.csv("~/R/data/icon/stormico/ico_all_no_runs_2018-01-18.csv",header=T)
+stormaccu_wrf=read.csv("~/R/data/wrf/stormwrf/stormaccu_wrf.csv",header=T)
+stormaccu_ico=read.csv("~/R/data/icon/stormico/stormaccu_ico.csv",header=T)
+stormaccu_ico$X=NULL
+stormaccu_ico=unique(stormaccu_ico)
+stormaccu_ico$timestamp=as.POSIXct(stormaccu_ico$timestamp)
+date=as.Date(stormaccu_ico$timestamp)
+date=unique(date)
+stormaccu_ico_1801_00=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)=="2018-01-18" & stormaccu_ico$RUN==0)
+stormaccu_ico_1801_06=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)=="2018-01-18" & stormaccu_ico$RUN==6)
+stormaccu_ico_1801_18=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)=="2018-01-18" & stormaccu_ico$RUN==18)
+
+
+```
+
+
+
+
+```{r}
+#icon
+hoursggploticon=function(date){
+ # month=substring(date)
+  #month=1
+#day=18
+ # if ( day >= 10) datepattern=paste("2018-","0",month,"-",day,sep="")else #datepattern=paste("2018-","0",month,"-0",day,sep="")
+  
+
+#print(datepattern)
+  datepattern=date
+  stormaccu_ico=read.csv("~/R/data/icon/stormico/stormaccu_ico.csv",header=T)
+  stormaccu_ico$X=NULL
+stormaccu_ico=unique(stormaccu_ico)
+stormaccu_ico$timestamp=as.POSIXct(stormaccu_ico$timestamp)
+stormaccu_ico_00=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)==datepattern & stormaccu_ico$RUN==0)
+stormaccu_ico_06=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)==datepattern & stormaccu_ico$RUN==6)
+stormaccu_ico_18=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)==datepattern & stormaccu_ico$RUN==18)
+
+#file=paste("~/R/data/Scripts/plots/hours/icon_runs_",day,"_",month,".png")
+
+file=file.path("~","Desktop","R","MA","Scripts","plots","hours",paste("icon_runs_",as.Date(stormaccu_ico_00$timestamp), ".jpeg", sep = ""))
+#print(file)
+
+jpeg(file=file, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+  geom_line(data=stormaccu_ico_00,aes(y=RMSE, col="RUN 00 UTC")) + 
+  geom_line(data=stormaccu_ico_06,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=stormaccu_ico_18,aes(y=RMSE, col="RUN 18 UTC")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_ico_00$timestamp),sep=" "),  subtitle="ICON", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+}
+#hoursggploticon(18,01)
+```
+
+
+```{r}
+#cosmo
+hoursggplotcos=function(date){
+ # month=substring(date)
+  #month=1
+#day=18
+ # if ( day >= 10) datepattern=paste("2018-","0",month,"-",day,sep="")else #datepattern=paste("2018-","0",month,"-0",day,sep="")
+  
+
+#print(datepattern)
+  datepattern=date
+  stormaccu_cos=read.csv("~/R/data/cosmo/stormcos/stormaccu_cos.csv",header=T)
+  stormaccu_cos$X=NULL
+stormaccu_cos=unique(stormaccu_cos)
+stormaccu_cos$timestamp=as.POSIXct(stormaccu_cos$timestamp)
+stormaccu_cos_00=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==0)
+stormaccu_cos_06=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==6)
+stormaccu_cos_12=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==12)
+stormaccu_cos_18=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==18)
+
+#file=paste("~/R/data/Scripts/plots/hours/cos_runs_",day,"_",month,".png")
+
+file=file.path("~","Desktop","R","MA","Scripts","plots","hours",paste("cos_runs_",as.Date(stormaccu_cos_00$timestamp), ".jpeg", sep = ""))
+#print(file)
+
+jpeg(file=file, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+  geom_line(data=stormaccu_cos_00,aes(y=RMSE, col="RUN 00 UTC")) + 
+  geom_line(data=stormaccu_cos_06,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=stormaccu_cos_12,aes(y=RMSE, col="RUN 12 UTC")) +  geom_line(data=stormaccu_cos_18,aes(y=RMSE, col="RUN 18 UTC")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_cos_12$timestamp),sep=" "),  subtitle="COSMO", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+}
+#hoursggploticon(18,01)
+
+
+```
+
+```{r}
+#wrf
+hoursggplotwrf=function(date){
+ # month=substring(date)
+  #month=1
+#day=18
+ # if ( day >= 10) datepattern=paste("2018-","0",month,"-",day,sep="")else #datepattern=paste("2018-","0",month,"-0",day,sep="")
+  
+
+#print(datepattern)
+  datepattern=date
+  stormaccu_wrf=read.csv("~/R/data/wrf/stormwrf/stormaccu_wrf.csv",header=T)
+  stormaccu_wrf$X=NULL
+stormaccu_wrf=unique(stormaccu_wrf)
+stormaccu_wrf$timestamp=as.POSIXct(stormaccu_wrf$timestamp)
+date=as.Date(stormaccu_wrf$timestamp)
+date=unique(date)
+stormaccu_wrf_00=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==0)
+stormaccu_wrf_06=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==6)
+stormaccu_wrf_12=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==12)
+stormaccu_wrf_18=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==18)
+
+#file=paste("~/R/data/Scripts/plots/hours/wrf_runs_",day,"_",month,".png")
+
+file=file.path("~","Desktop","R","MA","Scripts","plots","hours",paste("wrf_runs_",as.Date(stormaccu_wrf_00$timestamp), ".jpeg", sep = ""))
+#print(file)
+
+jpeg(file=file, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+  geom_line(data=stormaccu_wrf_00,aes(y=RMSE, col="RUN 00 UTC")) + 
+  geom_line(data=stormaccu_wrf_06,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=stormaccu_wrf_12,aes(y=RMSE, col="RUN 12 UTC")) +  geom_line(data=stormaccu_wrf_18,aes(y=RMSE, col="RUN 18 UTC")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_wrf_12$timestamp),sep=" "),  subtitle="WRF", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+}
+#hoursggplotwrfn(18,01)
+
+
+```
+
+
+```{r}
+#gfs
+hoursggplotgfs=function(date){
+ # month=substring(date)
+  #month=1
+#day=18
+ # if ( day >= 10) datepattern=paste("2018-","0",month,"-",day,sep="")else #datepattern=paste("2018-","0",month,"-0",day,sep="")
+  
+
+#print(datepattern)
+  datepattern=date
+  stormaccu_gfs=read.csv("~/R/data/gfs/stormgfs/stormaccu_gfs.csv",header=T)
+  stormaccu_gfs$X=NULL
+stormaccu_gfs=unique(stormaccu_gfs)
+stormaccu_gfs$timestamp=as.POSIXct(stormaccu_gfs$timestamp)
+date=as.Date(stormaccu_gfs$timestamp)
+date=unique(date)
+stormaccu_gfs_00=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==0)
+stormaccu_gfs_06=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==6)
+stormaccu_gfs_12=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==12)
+stormaccu_gfs_18=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==18)
+
+#file=paste("~/R/data/Scripts/plots/hours/gfs_runs_",day,"_",month,".png")
+
+file=file.path("~","Desktop","R","MA","Scripts","plots","hours",paste("gfs_runs_",as.Date(stormaccu_gfs_00$timestamp), ".jpeg", sep = ""))
+#print(file)
+
+jpeg(file=file, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+  geom_line(data=stormaccu_gfs_00,aes(y=RMSE, col="RUN 00 UTC")) + 
+  geom_line(data=stormaccu_gfs_06,aes(y=RMSE, col="RUN 06 UTC")) +   geom_line(data=stormaccu_gfs_12,aes(y=RMSE, col="RUN 12 UTC")) +  geom_line(data=stormaccu_gfs_18,aes(y=RMSE, col="RUN 18 UTC")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_gfs_12$timestamp),sep=" "),  subtitle="GFS", y="RMSE") +  scale_color_manual(name="", values = c("RUN 00 UTC"="#00ba38", "RUN 06 UTC"="#f8766d","RUN 12 UTC"="orange", "RUN 18 UTC"="blue")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+}
+#hoursggplotgfsn(18,01)
+
+```
+
+
+```{r}
+hoursggplotrun=function(date){
+ # month=substring(date)
+  #month=1
+#day=18
+ # if ( day >= 10) datepattern=paste("2018-","0",month,"-",day,sep="")else #datepattern=paste("2018-","0",month,"-0",day,sep="")
+  
+
+#print(datepattern)
+  #gfs
+datepattern=date
+stormaccu_gfs=read.csv("~/R/data/gfs/stormgfs/stormaccu_gfs.csv",header=T)
+stormaccu_gfs$X=NULL
+stormaccu_gfs=unique(stormaccu_gfs)
+stormaccu_gfs$timestamp=as.POSIXct(stormaccu_gfs$timestamp)
+date=as.Date(stormaccu_gfs$timestamp)
+date=unique(date)
+stormaccu_gfs_00=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==0)
+stormaccu_gfs_06=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==6)
+stormaccu_gfs_12=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==12)
+stormaccu_gfs_18=subset(stormaccu_gfs, as.Date(stormaccu_gfs$timestamp)==datepattern & stormaccu_gfs$RUN==18)
+#wrf
+stormaccu_wrf=read.csv("~/R/data/wrf/stormwrf/stormaccu_wrf.csv",header=T)
+stormaccu_wrf$X=NULL
+stormaccu_wrf=unique(stormaccu_wrf)
+stormaccu_wrf$timestamp=as.POSIXct(stormaccu_wrf$timestamp)
+date=as.Date(stormaccu_wrf$timestamp)
+date=unique(date)
+stormaccu_wrf_00=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==0)
+stormaccu_wrf_06=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==6)
+stormaccu_wrf_12=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==12)
+stormaccu_wrf_18=subset(stormaccu_wrf, as.Date(stormaccu_wrf$timestamp)==datepattern & stormaccu_wrf$RUN==18)
+
+#cos 
+stormaccu_cos=read.csv("~/R/data/cosmo/stormcos/stormaccu_cos.csv",header=T)
+stormaccu_cos$X=NULL
+stormaccu_cos=unique(stormaccu_cos)
+stormaccu_cos$timestamp=as.POSIXct(stormaccu_cos$timestamp)
+stormaccu_cos_00=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==0)
+stormaccu_cos_06=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==6)
+stormaccu_cos_12=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==12)
+stormaccu_cos_18=subset(stormaccu_cos, as.Date(stormaccu_cos$timestamp)==datepattern & stormaccu_cos$RUN==18)
+#icon
+stormaccu_ico=read.csv("~/R/data/icon/stormico/stormaccu_ico.csv",header=T)
+stormaccu_ico$X=NULL
+stormaccu_ico=unique(stormaccu_ico)
+stormaccu_ico$timestamp=as.POSIXct(stormaccu_ico$timestamp)
+stormaccu_ico_00=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)==datepattern & stormaccu_ico$RUN==0)
+stormaccu_ico_06=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)==datepattern & stormaccu_ico$RUN==6)
+stormaccu_ico_18=subset(stormaccu_ico, as.Date(stormaccu_ico$timestamp)==datepattern & stormaccu_ico$RUN==18)
+
+
+file00=file.path("~","Desktop","R","MA","Scripts","plots","hours_runs",paste("run00_",as.Date(stormaccu_gfs_00$timestamp[1]), ".jpeg", sep = ""))
+file06=file.path("~","Desktop","R","MA","Scripts","plots","hours_runs",paste("run06_",as.Date(stormaccu_gfs_00$timestamp[1]), ".jpeg", sep = ""))
+file12=file.path("~","Desktop","R","MA","Scripts","plots","hours_runs",paste("run12_",as.Date(stormaccu_gfs_00$timestamp[1]), ".jpeg", sep = ""))
+file18=file.path("~","Desktop","R","MA","Scripts","plots","hours_runs",paste("run18_",as.Date(stormaccu_gfs_18$timestamp[1]), ".jpeg", sep = ""))
+#print(file)
+
+#00
+jpeg(file=file00, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+geom_line(data=stormaccu_wrf_00,aes(y=RMSE, col="WRF ")) + 
+  geom_line(data=stormaccu_cos_00,aes(y=RMSE, col="COSMO")) +   geom_line(data=stormaccu_ico_00,aes(y=RMSE, col="ICON")) +  geom_line(data=stormaccu_gfs_00,aes(y=RMSE, col="GFS")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_gfs_00$timestamp),sep=" "),  subtitle="RUN 00 UTC", y="RMSE") +  scale_color_manual(name="", values = c( "WRF"="#00ba38","COSMO"="#f8766d","ICON"="blue", "GFS"="orange")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+#6
+jpeg(file=file06, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+geom_line(data=stormaccu_wrf_06,aes(y=RMSE, col="WRF ")) + 
+  geom_line(data=stormaccu_cos_06,aes(y=RMSE, col="COSMO")) +   geom_line(data=stormaccu_ico_06,aes(y=RMSE, col="ICON")) +  geom_line(data=stormaccu_gfs_06,aes(y=RMSE, col="GFS")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_gfs_06$timestamp),sep=" "),  subtitle="RUN 06 UTC", y="RMSE") +  scale_color_manual(name="", values = c( "WRF"="#00ba38","COSMO"="#f8766d","ICON"="blue", "GFS"="orange")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+#12
+jpeg(file=file12, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+geom_line(data=stormaccu_wrf_12,aes(y=RMSE, col="WRF ")) + 
+  geom_line(data=stormaccu_cos_12,aes(y=RMSE, col="COSMO")) 
+  +  geom_line(data=stormaccu_gfs_12,aes(y=RMSE, col="GFS")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_gfs_12$timestamp),sep=" "),  subtitle="RUN 12 UTC", y="RMSE") +  scale_color_manual(name="", values = c( "WRF"="#00ba38","COSMO"="#f8766d", "GFS"="orange")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+#18
+jpeg(file=file18, width = 720, height = 576, units = "px")
+#ggsave(filename = file, width = 720, height = 576, units = "px")
+print(ggplot(NULL, aes(x=timestamp,y=RMSE)) + 
+geom_line(data=stormaccu_wrf_18,aes(y=RMSE, col="WRF ")) + 
+  geom_line(data=stormaccu_cos_18,aes(y=RMSE, col="COSMO")) +   geom_line(data=stormaccu_ico_18,aes(y=RMSE, col="ICON")) +  geom_line(data=stormaccu_gfs_18,aes(y=RMSE, col="GFS")) + labs(title=paste("Root Mean Square Error",as.Date(stormaccu_gfs_18$timestamp),sep=" "),  subtitle="RUN 18 UTC", y="RMSE") +  scale_color_manual(name="", values = c( "WRF"="#00ba38","COSMO"="#f8766d","ICON"="blue", "GFS"="orange")) + scale_y_continuous(breaks = seq(0, 12, by = 1))+theme(axis.text.x = element_text(angle = 75, hjust = 1))+scale_x_datetime(name = "Hour", date_breaks = "1 hour",date_labels = "%H:%M")+ theme(
+  legend.position = c(.99, .99),
+  legend.justification = c("right", "top"),
+  legend.box.just = "top",
+  legend.margin = margin(1, 1, 1, 1)
+))
+dev.off()
+
+}
+#hoursggplotrun(date[16])
+#hoursggplotrun("2018-04-04") 
+
+```
+
+
+

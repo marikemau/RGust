@@ -1,0 +1,625 @@
+---
+title: "Evaluation Models"
+author: "Marike Meijer"
+date: "25 5 2018"
+output: html_document
+---
+```{r setup, echo=FALSE}
+#opts_chunk$set(echo = FALSE, cache=FALSE)
+source("~/R/scripts/evaluationstatistic/statisticmethodsverification.R")
+```
+
+
+```{r Libaries, message=FALSE, warning=FALSE,echo=FALSE}
+library(dplyr)
+library(readr)
+library(data.table)
+library(Metrics)
+library(sp)
+library(RColorBrewer)
+library(raster)
+library(ggmap)
+
+```
+
+
+
+```{r Variables, message=FALSE, warning=FALSE,echo=FALSE}
+#path
+cospath="~/R/data/cosmo/cosmoperday"
+wrfpath="~/R/data/wrf/wrfperday"
+gfspath="~/R/data/gfs/gfsperday"
+icopath="~/R/data/icon/iconperday"
+#colorscheme
+red<-brewer.pal(11,"RdYlGn")
+sta=brewer.pal(11,"Blues")
+#shapefile of germany
+shape=shapefile("~/R/data/other/germ")
+proj4string(shape)
+WGS84 = CRS("+init=epsg:4326")
+bbox=matrix(c(4,16,45,58),nrow=2,ncol=2, byrow = TRUE)
+#backgroundmap
+gmap=get_map(location = bbox, maptype = "terrain",color="bw")
+bbMap=attr(gmap, 'bb')
+latCenter=with(bbMap, ll.lat + ur.lat)/2
+lonCenter=with(bbMap, ll.lon + ur.lon)/2
+height=with(bbMap, ur.lat - ll.lat)
+width=with(bbMap, ur.lon - ll.lon)
+sp.raster=list('grid.raster', gmap,x=lonCenter, y=latCenter,width=width, height=height,default.units='native',first=T)
+
+```
+
+```{r}
+
+setwd(wrfpath)
+wrf_filenames=list.files(path=wrfpath)
+wrf_all=rbindlist(lapply(wrf_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+dates=wrf_all$MESS_DATUM
+dates=dates[!duplicated(dates)]
+wrf_all_sp=wrf_all
+coordinates(wrf_all_sp)=c("V5","V6")
+proj4string(wrf_all_sp) <- CRS(proj4string(shape))
+
+spplot(wrf_all_sp, c("Stationshoehe"),colorkey=T, col.regions=sta,main="DWD Stations",sub=" Altitude in Meters", cuts=c(0,125,250,500,750,1000,2000,3000),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+max(wrf_all_sp$Stationshoehe)
+```
+
+
+
+####Modeldata Daily
+```{r import data}
+################### turn into spatial points data frame
+#wrf
+setwd(wrfpath)
+wrf_filenames=list.files(path=wrfpath)
+wrf_all=rbindlist(lapply(wrf_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+dates=wrf_all$MESS_DATUM
+dates=dates[!duplicated(dates)]
+wrf_all_sp=wrf_all
+coordinates(wrf_all_sp)=c("V5","V6")
+proj4string(wrf_all_sp) <- CRS(proj4string(shape))
+#####################################################################################
+#cosmo
+setwd(cospath)
+cos_filenames=list.files(path=cospath)
+cos_all=rbindlist(lapply(cos_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+datec=cos_all$MESS_DATUM
+datec=datec[!duplicated(datec)]
+cos_all_sp=cos_all
+coordinates(cos_all_sp)=c("V5","V6")
+proj4string(cos_all_sp) <- CRS(proj4string(shape))
+#####################################################################################
+#gfs
+setwd(gfspath)
+gfs_filenames=list.files(path=gfspath)
+gfs_all=rbindlist(lapply(gfs_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+gfs_all_sp=gfs_all
+dateg=gfs_all$MESS_DATUM
+dateg=dateg[!duplicated(dateg)]
+coordinates(gfs_all_sp)=c("V5","V6")
+proj4string(gfs_all_sp) <- CRS(proj4string(shape))
+######################################################################################
+#icon
+setwd(icopath)
+ico_filenames=list.files(path=icopath)
+ico_all=rbindlist(lapply(ico_filenames, function(x){tryCatch(read.csv(x, header= T))}),fill=T)
+date=ico_all$MESS_DATUM
+date=date[!duplicated(date)]
+ico_all_sp=ico_all
+coordinates(ico_all_sp)=c("V5","V6")
+proj4string(ico_all_sp) <- CRS(proj4string(shape))
+
+```
+
+
+##Comparision month
+
+```{r monthly, echo=FALSE}
+wrf_jan=read.csv("~/R/data/wrf/wrf_monthly_jan.csv",header = T)
+wrf_feb=read.csv("~/R/data/wrf/wrf_monthly_feb.csv",header = T)
+wrf_mar=read.csv("~/R/data/wrf/wrf_monthly_mar.csv",header = T)
+wrf_apr=read.csv("~/R/data/wrf/wrf_monthly_apr.csv",header = T)
+ico_jan=read.csv("~/R/data/icon/ico_monthly_jan.csv",header = T)
+ico_feb=read.csv("~/R/data/icon/ico_monthly_feb.csv",header = T)
+ico_mar=read.csv("~/R/data/icon/ico_monthly_mar.csv",header = T)
+ico_apr=read.csv("~/R/data/icon/ico_monthly_apr.csv",header = T)
+cos_jan=read.csv("~/R/data/cosmo/cos_monthly_jan.csv",header = T)
+cos_feb=read.csv("~/R/data/cosmo/cos_monthly_feb.csv",header = T)
+cos_mar=read.csv("~/R/data/cosmo/cos_monthly_mar.csv",header = T)
+cos_apr=read.csv("~/R/data/cosmo/cos_monthly_apr.csv",header = T)
+gfs_jan=read.csv("~/R/data/gfs/gfs_monthly_jan.csv",header = T)
+gfs_feb=read.csv("~/R/data/gfs/gfs_monthly_feb.csv",header = T)
+gfs_mar=read.csv("~/R/data/gfs/gfs_monthly_mar.csv",header = T)
+gfs_apr=read.csv("~/R/data/gfs/gfs_monthly_apr.csv",header = T)
+#####################################################################################
+
+
+
+
+
+###turn into spatial 
+coordinates(wrf_jan)=c("V5","V6")
+proj4string(wrf_jan) <- CRS(proj4string(shape))
+coordinates(wrf_feb)=c("V5","V6")
+proj4string(wrf_feb) <- CRS(proj4string(shape))
+coordinates(wrf_mar)=c("V5","V6")
+proj4string(wrf_mar) <- CRS(proj4string(shape))
+coordinates(wrf_apr)=c("V5","V6")
+proj4string(wrf_apr) <- CRS(proj4string(shape))
+
+
+
+
+
+coordinates(cos_jan)=c("V5","V6")
+proj4string(cos_jan) <- CRS(proj4string(shape))
+coordinates(cos_feb)=c("V5","V6")
+proj4string(cos_feb) <- CRS(proj4string(shape))
+coordinates(cos_mar)=c("V5","V6")
+proj4string(cos_mar) <- CRS(proj4string(shape))
+coordinates(cos_apr)=c("V5","V6")
+proj4string(cos_apr) <- CRS(proj4string(shape))
+
+
+
+
+
+coordinates(ico_jan)=c("V5","V6")
+proj4string(ico_jan) <- CRS(proj4string(shape))
+coordinates(ico_feb)=c("V5","V6")
+proj4string(ico_feb) <- CRS(proj4string(shape))
+coordinates(ico_mar)=c("V5","V6")
+proj4string(ico_mar) <- CRS(proj4string(shape))
+coordinates(ico_apr)=c("V5","V6")
+proj4string(ico_apr) <- CRS(proj4string(shape))
+
+
+
+
+coordinates(gfs_jan)=c("V5","V6")
+proj4string(gfs_jan) <- CRS(proj4string(shape))
+coordinates(gfs_feb)=c("V5","V6")
+proj4string(gfs_feb) <- CRS(proj4string(shape))
+coordinates(gfs_mar)=c("V5","V6")
+proj4string(gfs_mar) <- CRS(proj4string(shape))
+coordinates(gfs_apr)=c("V5","V6")
+proj4string(gfs_apr) <- CRS(proj4string(shape))
+
+col=colors()[c(7,81,51,88,87,86,142,148,503,133,451,551,477)]
+breaks=c(0,0.3,1.6,3.4,5.5,8.0,10.8,13.9,17.2,20.8,24.5,28.5,32.7,60)
+
+
+###
+#wrf
+###
+jan_wrf_plot=spplot(wrf_jan, c("RMSE"),main="Root Mean Square Error", sub="WRF: January 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+feb_wrf_plot=spplot(wrf_feb, c("RMSE"),main="Root Mean Square Error", sub="WRF: February 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+mar_wrf_plot=spplot(wrf_mar, c("RMSE"),main="Root Mean Square Error", sub="WRF: March 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+apr_wrf_plot=spplot(wrf_apr, c("RMSE"),main="Root Mean Square Error", sub="WRF: April 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+###
+#cosmo
+###
+jan_cos_plot=spplot(cos_jan, c("RMSE"),main="Root Mean Square Error", sub="COSMO: January 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+feb_cos_plot=spplot(cos_feb, c("RMSE"),main="Root Mean Square Error", sub="COSMO: February 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+mar_cos_plot=spplot(cos_mar, c("RMSE"),main="Root Mean Square Error", sub="COSMO: March 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+apr_cos_plot=spplot(cos_apr, c("RMSE"),main="Root Mean Square Error", sub="COSMO: April 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+###
+#icon
+###
+jan_ico_plot=spplot(ico_jan, c("RMSE"),main="Root Mean Square Error", sub="ICON: January 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+feb_ico_plot=spplot(ico_feb, c("RMSE"),main="Root Mean Square Error", sub="ICON: February 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+mar_ico_plot=spplot(ico_mar, c("RMSE"),main="Root Mean Square Error", sub="ICON: March 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,12),edge.col="black",sp.layout=sp.raster,cex=0.8)
+apr_ico_plot=spplot(ico_apr, c("RMSE"),main="Root Mean Square Error", sub="ICON: April 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,12),edge.col="black",sp.layout=sp.raster,cex=0.8)
+###
+#gfs
+###
+jan_gfs_plot=spplot(gfs_jan, c("RMSE"),main="Root Mean Square Error", sub="GFS: January 2018",colorkey=T, col.regions=rev(red),cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+feb_gfs_plot=spplot(gfs_feb, c("RMSE"),main="Root Mean Square Error", sub="GFS: February 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+mar_gfs_plot=spplot(gfs_mar, c("RMSE"),main="Root Mean Square Error", sub="GFS: March 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",sp.layout=sp.raster,cex=0.8)
+apr_gfs_plot=spplot(gfs_apr, c("RMSE"),main="Root Mean Square Error", sub="GFS: April 2018",colorkey=T, col.regions=rev(red),cuts=c(0,1,2,3,4,5,6,7,8,15),edge.col="black",cex=0.8,sp.layout=sp.raster)
+
+# for (i in 1:20)
+#   file="~/Desktop/R/MA/pic/apr_gfs.png"
+#  png(file=file, width = 720, height = 576, units = "px")
+# print(apr_gfs_plot)
+# dev.off()
+
+require(gridExtra)
+#Jan
+grid.arrange(jan_wrf_plot,jan_cos_plot,jan_ico_plot,jan_gfs_plot,nrow=2,ncol=3)
+#Feb
+grid.arrange(feb_wrf_plot,feb_wrf_plot,feb_cos_plot,feb_ico_plot,feb_gfs_plot,nrow=2,ncol=3)
+#March
+grid.arrange(mar_wrf_plot,mar_wrf_plot,mar_cos_plot,mar_ico_plot,mar_gfs_plot,nrow=2,ncol=3)
+#April
+grid.arrange(apr_wrf_plot,apr_wrf_plot,apr_cos_plot,apr_ico_plot,apr_gfs_plot,nrow=2,ncol=3)
+```
+
+
+##Comparision: Continous Measures
+```{r echo=TRUE}
+#Summary of each Months of Mean of all all Stations 
+
+###
+#January
+###
+rmse(wrf_jan$FX,wrf_jan$V7_MAX)
+rmse(cos_jan$FX,cos_jan$V7_MAX)
+rmse(ico_jan$FX,ico_jan$V7_MAX)
+rmse(gfs_jan$FX,gfs_jan$V7_MAX)
+
+
+
+###
+#February
+###
+rmse(wrf_feb$FX,wrf_feb$V7_MAX)
+rmse(cos_feb$FX,cos_feb$V7_MAX)
+rmse(ico_feb$FX,ico_feb$V7_MAX)
+rmse(gfs_feb$FX,gfs_feb$V7_MAX)
+
+
+###
+#March
+###
+rmse(wrf_mar$FX,wrf_mar$V7_MAX)
+rmse(cos_mar$FX,cos_mar$V7_MAX)
+rmse(ico_mar$FX,ico_mar$V7_MAX)
+rmse(gfs_mar$FX,gfs_mar$V7_MAX)
+
+
+###
+#April
+###
+
+rmse(wrf_apr$FX,wrf_apr$V7_MAX)
+rmse(cos_apr$FX,cos_apr$V7_MAX)
+rmse(ico_apr$FX,ico_apr$V7_MAX)
+rmse(gfs_apr$FX,gfs_apr$V7_MAX)
+
+########
+########
+#All
+########
+wrf_all_no_runs <- read.csv("~/R/data/wrf/wrf_all_no_runs.csv",header=T)
+accuracy_wrf <- read.csv("~/R/data/wrf/accuracy_wrf.csv",header = T)
+cos_all_no_runs <- read.csv("~/R/data/cosmo/cos_all_no_runs.csv",header=T)
+accuracy_cos <- read.csv("~/R/data/cosmo/accuracy_cos.csv",header = T)
+ico_all_no_runs <- read.csv("~/R/data/icon/ico_all_no_runs.csv",header=T)
+accuracy_ico <- read.csv("~/R/data/icon/accuracy_ico.csv",header = T)
+gfs_all_no_runs <- read.csv("~/R/data/gfs/gfs_all_no_runs.csv",header=T)
+accuracy_gfs <- read.csv("~/R/data/gfs/accuracy_gfs.csv",header = T)
+
+
+rmse(wrf_all$FX, wrf_all$V7_MAX_DAY)
+rmse(cos_all$FX, cos_all$V7_MAX_DAY)
+rmse(ico_all$FX, ico_all$V7_MAX_DAY)
+rmse(gfs_all$FX, gfs_all$V7_MAX_DAY)
+
+
+##Comparision: Values
+###Whole Observationtime
+
+
+
+
+##Accuarcy Comparision
+##Input Observation: MAX Value of Station per Day
+##Input Prediction: MAX Value of all RUNS per Day for each Station
+require(Metrics)
+##RMSE
+rmse_wrf=rmse(wrf_all_no_runs$FX,wrf_all_no_runs$V7_MAX_DAY)
+rmse_cos=rmse(cos_all_no_runs$FX,cos_all_no_runs$V7_MAX_DAY)
+rmse_ico=rmse(ico_all_no_runs$FX,ico_all_no_runs$V7_MAX_DAY)
+rmse_gfs=rmse(gfs_all_no_runs$FX,gfs_all_no_runs$V7_MAX_DAY)
+####################################################
+#Accuracy
+accuracy(wrf_all_no_runs$FX,wrf_all_no_runs$V7_MAX_DAY)
+accuracy(cos_all_no_runs$FX,cos_all_no_runs$V7_MAX_DAY)
+accuracy(ico_all_no_runs$FX,ico_all_no_runs$V7_MAX_DAY)
+accuracy(gfs_all_no_runs$FX,gfs_all_no_runs$V7_MAX_DAY)
+#Correlation
+cor(wrf_all_no_runs$FX,wrf_all_no_runs$V7_MAX_DAY)
+cor(cos_all_no_runs$FX,cos_all_no_runs$V7_MAX_DAY)
+cor(ico_all_no_runs$FX,ico_all_no_runs$V7_MAX_DAY)
+cor(gfs_all_no_runs$FX,gfs_all_no_runs$V7_MAX_DAY)
+
+#Reduction of Variance
+#icon/wrf 0.5025
+reductionOfVariance(rmseF = rmse_ico, rmseAF =rmse_wrf )
+#icon/cosmo 0.0461
+reductionOfVariance(rmseF = rmse_ico, rmseAF =rmse_cos )
+#icon/gfs 0.3472
+reductionOfVariance(rmseF = rmse_ico, rmseAF =rmse_gfs )
+#cosmo/wrf 0.4785
+reductionOfVariance(rmseF = rmse_cos, rmseAF =rmse_wrf )
+#cosmo/icon -0.04
+reductionOfVariance(rmseF = rmse_cos, rmseAF =rmse_ico )
+#cosmo/gfs 0.31
+reductionOfVariance(rmseF = rmse_cos, rmseAF =rmse_gfs )
+#wrf/cos -0.9175558
+reductionOfVariance(rmseF = rmse_wrf, rmseAF =rmse_cos )
+#wrf/icon -1.010244
+reductionOfVariance(rmseF = rmse_wrf, rmseAF =rmse_ico )
+#wrf/gfs  -0.312304
+reductionOfVariance(rmseF = rmse_wrf, rmseAF =rmse_gfs )
+#gfs/wrf 0.2379814
+reductionOfVariance(rmseF = rmse_gfs, rmseAF =rmse_wrf )
+#gfs/icon -0.5318435
+reductionOfVariance(rmseF = rmse_gfs, rmseAF =rmse_ico )
+#gfs/cos-0.4612131
+reductionOfVariance(rmseF = rmse_gfs, rmseAF =rmse_cos )
+
+
+```
+
+
+###Time Series of RMSE
+```{r}
+
+run1=subset(accuracy_wrf,accuracy_wrf$RUN==00)
+run2=subset(accuracy_wrf,accuracy_wrf$RUN==06)
+run3=subset(accuracy_wrf,accuracy_wrf$RUN==12)
+run4=subset(accuracy_wrf,accuracy_wrf$RUN==18)
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+run1$Date=as.Date(run1$Date)
+run2$Date=as.Date(run2$Date)
+run3$Date=as.Date(run3$Date)
+run4$Date=as.Date(run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run1,aes(y=RMSE, col="RUN1")) + 
+  geom_line(data=run2,aes(y=RMSE, col="RUN2")) +   geom_line(data=run3,aes(y=RMSE, col="RUN3")) +   geom_line(data=run4,aes(y=RMSE, col="RUN4")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="WRF", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN1"="#00ba38", "RUN2"="#f8766d","RUN3"="blue", "RUN4"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+###################################
+cos_run1=subset(accuracy_cos,accuracy_cos$RUN==00)
+cos_run2=subset(accuracy_cos,accuracy_cos$RUN==06)
+cos_run3=subset(accuracy_cos,accuracy_cos$RUN==12)
+cos_run4=subset(accuracy_cos,accuracy_cos$RUN==18)
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+cos_run1$Date=as.Date(cos_run1$Date)
+cos_run2$Date=as.Date(cos_run2$Date)
+cos_run3$Date=as.Date(cos_run3$Date)
+cos_run4$Date=as.Date(cos_run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=cos_run1,aes(y=RMSE, col="RUN1")) + 
+  geom_line(data=cos_run2,aes(y=RMSE, col="RUN2")) +   geom_line(data=cos_run3,aes(y=RMSE, col="RUN3")) +   geom_line(data=cos_run4,aes(y=RMSE, col="RUN4")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="cos", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN1"="#00ba38", "RUN2"="#f8766d","RUN3"="blue", "RUN4"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+###################################
+ico_run1=subset(accuracy_ico,accuracy_ico$RUN==00)
+ico_run2=subset(accuracy_ico,accuracy_ico$RUN==06)
+#ico_run3=subset(accuracy_ico,accuracy_ico$RUN==12)
+ico_run4=subset(accuracy_ico,accuracy_ico$RUN==18)
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+ico_run1$Date=as.Date(ico_run1$Date)
+ico_run2$Date=as.Date(ico_run2$Date)
+#ico_run3$Date=as.Date(ico_run3$Date)
+ico_run4$Date=as.Date(ico_run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=ico_run1,aes(y=RMSE, col="RUN1")) + 
+  geom_line(data=ico_run2,aes(y=RMSE, col="RUN2"))+   geom_line(data=ico_run4,aes(y=RMSE, col="RUN4")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="ico", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN1"="#00ba38", "RUN2"="#f8766d", "RUN4"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+###################################
+gfs_run1=subset(accuracy_gfs,accuracy_gfs$RUN==00)
+gfs_run2=subset(accuracy_gfs,accuracy_gfs$RUN==06)
+gfs_run3=subset(accuracy_gfs,accuracy_gfs$RUN==12)
+gfs_run4=subset(accuracy_gfs,accuracy_gfs$RUN==18)
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+gfs_run1$Date=as.Date(gfs_run1$Date)
+gfs_run2$Date=as.Date(gfs_run2$Date)
+gfs_run3$Date=as.Date(gfs_run3$Date)
+gfs_run4$Date=as.Date(gfs_run4$Date)
+# labels and breaks for X axis text
+
+
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=gfs_run1,aes(y=RMSE_allvalues, col="RUN1")) + 
+  geom_line(data=gfs_run2,aes(y=RMSE_allvalues, col="RUN2")) +   geom_line(data=gfs_run3,aes(y=RMSE_allvalues, col="RUN3")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="RUN4")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="gfs", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN1"="#00ba38", "RUN2"="#f8766d","RUN3"="blue", "RUN4"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+###################
+###############################################################
+#Run00
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run1,aes(y=RMSE, col="RUN_WRF")) + 
+  geom_line(data=cos_run1,aes(y=RMSE, col="RUN_COS")) +   geom_line(data=ico_run1,aes(y=RMSE, col="RUN_ICO")) +   geom_line(data=gfs_run1,aes(y=RMSE_allvalues, col="RUN_GFS")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="RUN 00", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN_WRF"="#00ba38", "RUN_COS"="#f8766d","RUN_ICO"="blue", "RUN_GFS"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+
+###############################################################
+#Run06
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run2,aes(y=RMSE, col="RUN_WRF")) + 
+  geom_line(data=cos_run2,aes(y=RMSE, col="RUN_COS")) +   geom_line(data=ico_run2,aes(y=RMSE, col="RUN_ICO")) +   geom_line(data=gfs_run2,aes(y=RMSE_allvalues, col="RUN_GFS")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="RUN 06", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN_WRF"="#00ba38", "RUN_COS"="#f8766d","RUN_ICO"="blue", "RUN_GFS"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+###############################################################
+#Run12
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run3,aes(y=RMSE, col="RUN_WRF")) + 
+  geom_line(data=cos_run3,aes(y=RMSE, col="RUN_COS")) +   geom_line(data=gfs_run3,aes(y=RMSE_allvalues, col="RUN_GFS")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="RUN 12", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN_WRF"="#00ba38", "RUN_COS"="#f8766d", "RUN_GFS"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+
+###############################################################
+#Run18
+################################################################
+# plot
+ggplot(NULL, aes(x=Date,y=RMSE)) + 
+  geom_line(data=run4,aes(y=RMSE, col="RUN_WRF")) + 
+  geom_line(data=cos_run4,aes(y=RMSE, col="RUN_COS")) +   geom_line(data=ico_run4,aes(y=RMSE, col="RUN_ICO")) +   geom_line(data=gfs_run4,aes(y=RMSE_allvalues, col="RUN_GFS")) + 
+  labs(title="Time Series of RMSE", 
+       subtitle="RUN 18", 
+      y="RMSE") +  # title and caption
+   # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("RUN_WRF"="#00ba38", "RUN_COS"="#f8766d","RUN_ICO"="blue", "RUN_GFS"="orange")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+
+```
+
+
+
+```{r daily}
+
+# wrf_plots <- lapply(1:103, function(x) spplot((subset(wrf_all_sp,wrf_all_sp$MESS_DATUM==dates[x])),c("RMSE_daily"),main="wrf:RMSE in m/s", sub=paste("Date:",dates[x]),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster,cex=0.8))
+# gfs_plots <- lapply(1:103, function(x) spplot((subset(gfs_all_sp,gfs_all_sp$MESS_DATUM==dateg[x])),c("RMSE_daily"),main="GFS:RMSE in m/s", sub=paste("Date:",dateg[x]),colorkey=T, col.regions=rev(red),sp.layout=sp.raster, cuts=c(0.3,1.5,3.3,5.5,7.9,10.7,13.8,17.1,20.7,24.4,28.4,32.6),cex=0.8,edge.col="black"))
+# ico_plots <- lapply(1:103, function(x) spplot((subset(ico_all_sp,ico_all_sp$MESS_DATUM==date[x])),c("RMSE_daily"),main="Icon:RMSE in m/s", sub=paste("Date:",date[x]),colorkey=T, col.regions=rev(red) ,edge.col="black",sp.layout=sp.raster,cuts=c(0,2,4,6,8,10,12,14,16),cex=0.8))
+# cos_plots <- lapply(1:103, function(x) spplot((subset(cos_all_sp,cos_all_sp$MESS_DATUM==datec[x])),c("RMSE_daily"),main="COSMO:RMSE in m/s", sub=paste("Date:",datec[x]),colorkey=T, col.regions=rev(red), cuts=c(0,2,4,6,8,10,12,14,16),edge.col="black",sp.layout=sp.raster,cex=0.8))
+# 
+# 
+# require(gridExtra)
+# for (i in 1:103){
+# do.call(grid.arrange, c(wrf_plots[i],ico_plots[i],cos_plots[i],gfs_plots[i],nrow=2,ncol=2))
+# }
+
+
+```
+
+```{r}
+alltimewrf=NULL
+stationid=unique(wrf_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(wrf_all_no_runs,wrf_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimewrf=rbindlist(list(alltimewrf,new))
+}
+
+alltimeico=NULL
+stationid=unique(ico_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(ico_all_no_runs,ico_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimeico=rbindlist(list(alltimeico,new))
+}
+
+alltimecos=NULL
+stationid=unique(cos_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(cos_all_no_runs,cos_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimecos=rbindlist(list(alltimecos,new))
+}
+
+alltimegfs=NULL
+stationid=unique(gfs_all_no_runs$STATIONS_ID)
+for (i in stationid){
+  x=subset(gfs_all_no_runs,gfs_all_no_runs$STATIONS_ID==i)
+ new=data.frame(STATIONS_ID=x$STATIONS_ID[1],V5=x$V5[1],V6=x$V6[1], V7_MAX=max(x$V7_MAX_DAY),FX=max(x$FX),RMSE=rmse(x$FX,x$V7_MAX_DAY),Stationshoehe=x$Stationshoehe[1])
+ alltimegfs=rbindlist(list(alltimegfs,new))
+}
+
+#alltimewrf
+#coordinates(alltimewrf)=c("V5","V6")
+#proj4string(alltimewrf) <- CRS(proj4string(shape))
+
+all_wrf=spplot(alltimewrf, c("RMSE"),main="Root Mean Square Error", sub="WRF: January-April 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+all_wrf
+
+#alltimecos
+#coordinates(alltimecos)=c("V5","V6")
+#proj4string(alltimecos) <- CRS(proj4string(shape))
+
+all_cos=spplot(alltimecos, c("RMSE"),main="Root Mean Square Error", sub="COSMO: January-April 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+all_cos
+
+#alltimeico
+#coordinates(alltimeico)=c("V5","V6")
+#proj4string(alltimeico) <- CRS(proj4string(shape))
+
+all_ico=spplot(alltimeico, c("RMSE"),main="Root Mean Square Error", sub="ICON: January-April 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,7,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+all_ico
+
+
+#alltimegfs
+#coordinates(alltimegfs)=c("V5","V6")
+#proj4string(alltimegfs) <- CRS(proj4string(shape))
+
+all_gfs=spplot(alltimegfs, c("RMSE"),main="Root Mean Square Error", sub="GFS: January-April 2018",colorkey=T, col.regions=rev(red), cuts=c(0,1,2,3,4,5,6,8,9,10),edge.col="black",sp.layout=sp.raster,cex=0.8)
+
+all_gfs
+
+
+
+
+
+
+```
+
+
